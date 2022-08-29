@@ -1,2 +1,1 @@
-# metamui-sdk
 # metamui-crates
