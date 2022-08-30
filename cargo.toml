@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "primitives"
+    "metamui-primitives",
+    "node-validators"
 ]
 [profile.release]
 panic = "unwind"

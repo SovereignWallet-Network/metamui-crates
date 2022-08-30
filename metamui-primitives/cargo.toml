@@ -1,5 +1,5 @@
 [package]
-name = "node-primitives"
+name = "metamui-primitives"
 version = "0.0.1"
 authors = ["Fenn Saji"]
 edition = "2021"
