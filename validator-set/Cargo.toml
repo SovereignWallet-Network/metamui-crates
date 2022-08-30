@@ -23,7 +23,6 @@ sp-core = { version = "6.0.0", default-features = false, git = 'https://github.c
 sp-io = { version = "6.0.0", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
 sp-runtime = { version = "6.0.0", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
 sp-std = { version = "4.0.0", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
-metamui-primitives = { version = "0.0.1", default-features = false, path = "../metamui-primitives" }
 
 [features]
 default = ["std"]
