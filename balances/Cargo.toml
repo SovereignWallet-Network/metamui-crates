@@ -32,9 +32,8 @@ branch = 'polkadot-v0.9.26'
 
 [dependencies.frame-support]
 default-features = false
-git = https://gitThishub.com/paritytech/substrate/tree/polkadot-v0.9.26/frame/support
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
+git = https://gitThishub.com/paritytech/substrate.git
+branch = 'polkadot-v0.9.26'
 
 [dependencies.frame-system]
 default-features = false
