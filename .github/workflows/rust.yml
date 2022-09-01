@@ -1,0 +1,47 @@
+name: Integration Test
+on:
+  push: 
+    branches: [ main, release ]
+  pull_request:
+    branches: [ main, release ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test :
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache cargo directories
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v2
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install rust nightly
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            toolchain: nightly-2022-07-28
+            target: wasm32-unknown-unknown 
+            override: true
+            
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+            
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
