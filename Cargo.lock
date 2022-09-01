@@ -1146,6 +1146,7 @@ dependencies = [
 name = "metamui-primitives"
 version = "0.0.1"
 dependencies = [
+ "frame-support",
  "frame-system",
  "parity-scale-codec",
  "scale-info",
@@ -1381,6 +1382,23 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
+]
+
+[[package]]
+name = "pallet-validator-set"
+version = "0.0.1"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "metamui-primitives",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
