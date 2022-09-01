@@ -33,6 +33,19 @@ use sp_runtime::{
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
+pub type AccountId = u64;
+
+pub struct DidResolution;
+impl DidResolve<AccountId> for DidResolution {
+	/// return if an accountId is mapped to a DID
+  fn did_exists(x: &AccountId) -> bool {
+		true
+	}
+  /// convert accountId to DID
+  fn get_account_id(k: &AccountId) -> Option<Did> {
+		Some(*b"did:ssid:swn/0/0/0/0/0/0/0/0/0/0")
+	}
+}
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -126,6 +139,7 @@ impl Config<Instance1> for Test {
 	type MaxMembers = MaxMembers;
 	type DefaultVote = PrimeDefaultVote;
 	type WeightInfo = ();
+	type DidResolution = DidResolution;
 }
 impl Config<Instance2> for Test {
 	type Origin = Origin;
@@ -136,6 +150,7 @@ impl Config<Instance2> for Test {
 	type MaxMembers = MaxMembers;
 	type DefaultVote = MoreThanMajorityThenPrimeDefaultVote;
 	type WeightInfo = ();
+	type DidResolution = DidResolution;
 }
 impl mock_democracy::Config for Test {
 	type Event = Event;
@@ -150,6 +165,7 @@ impl Config for Test {
 	type MaxMembers = MaxMembers;
 	type DefaultVote = PrimeDefaultVote;
 	type WeightInfo = ();
+	type DidResolution = DidResolution;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

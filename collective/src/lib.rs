@@ -58,8 +58,8 @@ use frame_support::{
 	weights::{GetDispatchInfo, Pays, Weight},
 };
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -210,7 +210,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		/// Resolve Did from account Id
-		type DidResolve: DidResolve<Self::AccountId>;
+		type DidResolution: DidResolve<Self::AccountId>;
 	}
 
 	#[pallet::genesis_config]
@@ -440,7 +440,7 @@ pub mod pallet {
 			#[pallet::compact] length_bound: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let who_did = T::DidResolve::get_did_from_account_id(&who);
+			let who_did = T::DidResolution::get_account_id(&who).unwrap();
 			let members = Self::members();
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 			let proposal_len = proposal.encoded_size();
@@ -513,7 +513,7 @@ pub mod pallet {
 			#[pallet::compact] length_bound: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let who_did = T::DidResolve::get_did_from_account_id(&who);
+			let who_did = T::DidResolution::get_account_id(&who).unwrap();
 			let members = Self::members();
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
@@ -565,7 +565,7 @@ pub mod pallet {
 			approve: bool,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let who_did = T::DidResolve::get_did_from_account_id(&who);
+			let who_did = T::DidResolution::get_account_id(&who).unwrap();
 			let members = Self::members();
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
