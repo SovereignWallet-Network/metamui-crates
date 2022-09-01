@@ -10,6 +10,9 @@ use sp_runtime::{
 	MultiSignature, OpaqueExtrinsic,
 };
 
+/// All traits for metamui
+pub mod traits;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
