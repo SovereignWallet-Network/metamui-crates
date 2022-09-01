@@ -2,7 +2,7 @@
 name = "pallet-collective"
 version = "0.0.1"
 authors = ["Metamui"]
-edition = "2022"
+edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/SovereignWallet-Network/metamui-crates.git"
 description = "Collective system: Members of a set of account IDs can make their collective feelings known through dispatched calls from one of two specialized origins."
@@ -61,6 +61,11 @@ branch = 'polkadot-v0.9.26'
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 branch = 'polkadot-v0.9.26'
+
+[dependencies.metamui-primitives]
+default-features = false
+path = '../metamui-primitives'
+version = '0.0.1'
 
 [features]
 default = ["std"]
