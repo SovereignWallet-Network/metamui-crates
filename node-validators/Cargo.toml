@@ -6,74 +6,24 @@ edition = '2021'
 license = 'Apache-2.0'
 repository = 'https://github.com/SovereignWallet-Network/metamui-crates'
 
-[dev-dependencies.serde]
-features = ['derive']
-version = '1.0.126'
+[dependencies]
+syn = '1.0.98'
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+log = { version = "0.4.17", default-features = false }
+scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
+frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
+frame-support = { version = "4.0.0-dev", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26"}
+frame-system = { version = "4.0.0-dev", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
+sp-core = { version = "6.0.0", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
+sp-io = { version = "6.0.0", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
+sp-runtime = { version = "6.0.0", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
+sp-std = { version = "4.0.0", default-features = false, git = 'https://github.com/paritytech/substrate.git', branch="polkadot-v0.9.26" }
+sp-staking = { default-features = false, git = 'https://github.com/paritytech/substrate.git', branch = 'polkadot-v0.9.26' }
+pallet-session = { default-features = false, git = 'https://github.com/paritytech/substrate.git', branch = 'polkadot-v0.9.26', features = ['historical'] }
 
-[dependencies.sp-core]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-branch = 'polkadot-v0.9.26'
+[dev-dependencies]
+serde = {features = ['derive'], version = '1.0.126' }
 
-[dependencies.sp-io]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-branch = 'polkadot-v0.9.26'
-
-[dependencies.sp-runtime]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-branch = 'polkadot-v0.9.26'
-
-[dependencies.sp-std]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-branch = 'polkadot-v0.9.26'
-
-[dependencies.sp-staking]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-branch = 'polkadot-v0.9.26'
-
-[dependencies.log]
-default-features = false
-version = '0.4.17'
-
-[dependencies.codec]
-default-features = false
-features = ['derive']
-package = 'parity-scale-codec'
-version = '3.0.0'
-
-[dependencies.frame-benchmarking]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-optional = true
-branch = 'polkadot-v0.9.26'
-
-[dependencies.frame-support]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-branch = 'polkadot-v0.9.26'
-
-[dependencies.frame-system]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-branch = 'polkadot-v0.9.26'
-
-[dependencies.pallet-session]
-default-features = false
-features = ['historical']
-git = 'https://github.com/paritytech/substrate.git'
-branch = 'polkadot-v0.9.26'
-
-[dependencies.scale-info]
-default-features = false
-features = ['derive']
-version = '2.1.1'
-
-[dependencies.syn]
-version = '1.0.98'
 
 [features]
 default = ['std']
