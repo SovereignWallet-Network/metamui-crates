@@ -1384,6 +1384,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-validator-set"
+version = "0.0.1"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "parity-scale-codec"
 version = "3.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
