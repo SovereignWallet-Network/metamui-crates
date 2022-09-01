@@ -27,15 +27,14 @@ use frame_support::{
 	traits::{ChangeMembers, Contains, Get, InitializeMembers, SortedMembers},
 	BoundedVec,
 };
-use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
+use metamui_primitives::{Did, traits::{DidResolve, MultiAddress}};
+
 pub mod migrations;
 pub mod weights;
 
 pub use pallet::*;
 pub use weights::WeightInfo;
-
-type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -74,10 +73,10 @@ pub mod pallet {
 		/// The receiver of the signal for when the membership has been initialized. This happens
 		/// pre-genesis and will usually be the same as `MembershipChanged`. If you need to do
 		/// something different on initialization, then you can change this accordingly.
-		type MembershipInitialized: InitializeMembers<Self::AccountId>;
+		type MembershipInitialized: InitializeMembers<Did>;
 
 		/// The receiver of the signal for when the membership has changed.
-		type MembershipChanged: ChangeMembers<Self::AccountId>;
+		type MembershipChanged: ChangeMembers<Did>;
 
 		/// The maximum number of members that this membership can have.
 		///
@@ -85,6 +84,9 @@ pub mod pallet {
 		///
 		/// This is enforced in the code; the membership size can not exceed this limit.
 		type MaxMembers: Get<u32>;
+
+		/// Resolve Did from Account Id
+		type DidResolution: DidResolve<Self::AccountId>;
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
@@ -94,16 +96,16 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn members)]
 	pub type Members<T: Config<I>, I: 'static = ()> =
-		StorageValue<_, BoundedVec<T::AccountId, T::MaxMembers>, ValueQuery>;
+		StorageValue<_, BoundedVec<Did, T::MaxMembers>, ValueQuery>;
 
 	/// The current prime member, if one exists.
 	#[pallet::storage]
 	#[pallet::getter(fn prime)]
-	pub type Prime<T: Config<I>, I: 'static = ()> = StorageValue<_, T::AccountId, OptionQuery>;
+	pub type Prime<T: Config<I>, I: 'static = ()> = StorageValue<_, Did, OptionQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
-		pub members: BoundedVec<T::AccountId, T::MaxMembers>,
+		pub members: BoundedVec<Did, T::MaxMembers>,
 		pub phantom: PhantomData<I>,
 	}
 
@@ -146,7 +148,7 @@ pub mod pallet {
 		/// One of the members' keys changed.
 		KeyChanged,
 		/// Phantom member, never used.
-		Dummy { _phantom_data: PhantomData<(T::AccountId, <T as Config<I>>::Event)> },
+		Dummy { _phantom_data: PhantomData<(Did, <T as Config<I>>::Event)> },
 	}
 
 	#[pallet::error]
@@ -165,9 +167,9 @@ pub mod pallet {
 		///
 		/// May only be called from `T::AddOrigin`.
 		#[pallet::weight(50_000_000)]
-		pub fn add_member(origin: OriginFor<T>, who: AccountIdLookupOf<T>) -> DispatchResult {
+		pub fn add_member(origin: OriginFor<T>, who: Did) -> DispatchResult {
 			T::AddOrigin::ensure_origin(origin)?;
-			let who = T::Lookup::lookup(who)?;
+			T::DidResolution::did_exists(MultiAddress::Did(who))?;
 
 			let mut members = <Members<T, I>>::get();
 			let location = members.binary_search(&who).err().ok_or(Error::<T, I>::AlreadyMember)?;
@@ -187,9 +189,9 @@ pub mod pallet {
 		///
 		/// May only be called from `T::RemoveOrigin`.
 		#[pallet::weight(50_000_000)]
-		pub fn remove_member(origin: OriginFor<T>, who: AccountIdLookupOf<T>) -> DispatchResult {
+		pub fn remove_member(origin: OriginFor<T>, who: Did) -> DispatchResult {
 			T::RemoveOrigin::ensure_origin(origin)?;
-			let who = T::Lookup::lookup(who)?;
+			T::DidResolution::did_exists(MultiAddress::Did(who))?;
 
 			let mut members = <Members<T, I>>::get();
 			let location = members.binary_search(&who).ok().ok_or(Error::<T, I>::NotMember)?;
@@ -212,12 +214,12 @@ pub mod pallet {
 		#[pallet::weight(50_000_000)]
 		pub fn swap_member(
 			origin: OriginFor<T>,
-			remove: AccountIdLookupOf<T>,
-			add: AccountIdLookupOf<T>,
+			remove: Did,
+			add: Did,
 		) -> DispatchResult {
 			T::SwapOrigin::ensure_origin(origin)?;
-			let remove = T::Lookup::lookup(remove)?;
-			let add = T::Lookup::lookup(add)?;
+			T::DidResolution::did_exists(MultiAddress::Did(remove))?;
+			T::DidResolution::did_exists(MultiAddress::Did(add))?;
 
 			if remove == add {
 				return Ok(())
@@ -243,10 +245,10 @@ pub mod pallet {
 		///
 		/// May only be called from `T::ResetOrigin`.
 		#[pallet::weight(50_000_000)]
-		pub fn reset_members(origin: OriginFor<T>, members: Vec<T::AccountId>) -> DispatchResult {
+		pub fn reset_members(origin: OriginFor<T>, members: Vec<Did>) -> DispatchResult {
 			T::ResetOrigin::ensure_origin(origin)?;
 
-			let mut members: BoundedVec<T::AccountId, T::MaxMembers> =
+			let mut members: BoundedVec<Did, T::MaxMembers> =
 				BoundedVec::try_from(members).map_err(|_| Error::<T, I>::TooManyMembers)?;
 			members.sort();
 			<Members<T, I>>::mutate(|m| {
@@ -265,9 +267,10 @@ pub mod pallet {
 		///
 		/// Prime membership is passed from the origin account to `new`, if extant.
 		#[pallet::weight(50_000_000)]
-		pub fn change_key(origin: OriginFor<T>, new: AccountIdLookupOf<T>) -> DispatchResult {
+		pub fn change_key(origin: OriginFor<T>, new: Did) -> DispatchResult {
 			let remove = ensure_signed(origin)?;
-			let new = T::Lookup::lookup(new)?;
+			let remove = T::DidResolution::get_account_id(&remove).unwrap();
+			T::DidResolution::did_exists(MultiAddress::Did(new))?;
 
 			if remove != new {
 				let mut members = <Members<T, I>>::get();
@@ -299,9 +302,9 @@ pub mod pallet {
 		///
 		/// May only be called from `T::PrimeOrigin`.
 		#[pallet::weight(50_000_000)]
-		pub fn set_prime(origin: OriginFor<T>, who: AccountIdLookupOf<T>) -> DispatchResult {
+		pub fn set_prime(origin: OriginFor<T>, who: Did) -> DispatchResult {
 			T::PrimeOrigin::ensure_origin(origin)?;
-			let who = T::Lookup::lookup(who)?;
+			T::DidResolution::did_exists(MultiAddress::Did(who))?;
 			Self::members().binary_search(&who).ok().ok_or(Error::<T, I>::NotMember)?;
 			Prime::<T, I>::put(&who);
 			T::MembershipChanged::set_prime(Some(who));
@@ -322,7 +325,7 @@ pub mod pallet {
 }
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
-	fn rejig_prime(members: &[T::AccountId]) {
+	fn rejig_prime(members: &[Did]) {
 		if let Some(prime) = Prime::<T, I>::get() {
 			match members.binary_search(&prime) {
 				Ok(_) => T::MembershipChanged::set_prime(Some(prime)),
@@ -332,14 +335,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 }
 
-impl<T: Config<I>, I: 'static> Contains<T::AccountId> for Pallet<T, I> {
-	fn contains(t: &T::AccountId) -> bool {
+impl<T: Config<I>, I: 'static> Contains<Did> for Pallet<T, I> {
+	fn contains(t: &Did) -> bool {
 		Self::members().binary_search(t).is_ok()
 	}
 }
 
-impl<T: Config<I>, I: 'static> SortedMembers<T::AccountId> for Pallet<T, I> {
-	fn sorted_members() -> Vec<T::AccountId> {
+impl<T: Config<I>, I: 'static> SortedMembers<Did> for Pallet<T, I> {
+	fn sorted_members() -> Vec<Did> {
 		Self::members().to_vec()
 	}
 
@@ -357,7 +360,7 @@ mod benchmark {
 
 	const SEED: u32 = 0;
 
-	fn set_members<T: Config<I>, I: 'static>(members: Vec<T::AccountId>, prime: Option<usize>) {
+	fn set_members<T: Config<I>, I: 'static>(members: Vec<Did>, prime: Option<usize>) {
 		let reset_origin = T::ResetOrigin::successful_origin();
 		let prime_origin = T::PrimeOrigin::successful_origin();
 
@@ -374,9 +377,9 @@ mod benchmark {
 		add_member {
 			let m in 1 .. (T::MaxMembers::get() - 1);
 
-			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<T::AccountId>>();
+			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<Did>>();
 			set_members::<T, I>(members, None);
-			let new_member = account::<T::AccountId>("add", m, SEED);
+			let new_member = account::<Did>("add", m, SEED);
 			let new_member_lookup = T::Lookup::unlookup(new_member.clone());
 		}: {
 			assert_ok!(<Membership<T, I>>::add_member(T::AddOrigin::successful_origin(), new_member_lookup));
@@ -391,7 +394,7 @@ mod benchmark {
 		remove_member {
 			let m in 2 .. T::MaxMembers::get();
 
-			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<T::AccountId>>();
+			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<Did>>();
 			set_members::<T, I>(members.clone(), Some(members.len() - 1));
 
 			let to_remove = members.first().cloned().unwrap();
@@ -409,9 +412,9 @@ mod benchmark {
 		swap_member {
 			let m in 2 .. T::MaxMembers::get();
 
-			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<T::AccountId>>();
+			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<Did>>();
 			set_members::<T, I>(members.clone(), Some(members.len() - 1));
-			let add = account::<T::AccountId>("member", m, SEED);
+			let add = account::<Did>("member", m, SEED);
 			let add_lookup = T::Lookup::unlookup(add.clone());
 			let remove = members.first().cloned().unwrap();
 			let remove_lookup = T::Lookup::unlookup(remove.clone());
@@ -433,9 +436,9 @@ mod benchmark {
 		reset_member {
 			let m in 1 .. T::MaxMembers::get();
 
-			let members = (1..m+1).map(|i| account("member", i, SEED)).collect::<Vec<T::AccountId>>();
+			let members = (1..m+1).map(|i| account("member", i, SEED)).collect::<Vec<Did>>();
 			set_members::<T, I>(members.clone(), Some(members.len() - 1));
-			let mut new_members = (m..2*m).map(|i| account("member", i, SEED)).collect::<Vec<T::AccountId>>();
+			let mut new_members = (m..2*m).map(|i| account("member", i, SEED)).collect::<Vec<Did>>();
 		}: {
 			assert_ok!(<Membership<T, I>>::reset_members(T::ResetOrigin::successful_origin(), new_members.clone()));
 		} verify {
@@ -450,11 +453,11 @@ mod benchmark {
 			let m in 1 .. T::MaxMembers::get();
 
 			// worse case would be to change the prime
-			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<T::AccountId>>();
+			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<Did>>();
 			let prime = members.last().cloned().unwrap();
 			set_members::<T, I>(members.clone(), Some(members.len() - 1));
 
-			let add = account::<T::AccountId>("member", m, SEED);
+			let add = account::<Did>("member", m, SEED);
 			let add_lookup = T::Lookup::unlookup(add.clone());
 			whitelist!(prime);
 		}: {
@@ -469,7 +472,7 @@ mod benchmark {
 
 		set_prime {
 			let m in 1 .. T::MaxMembers::get();
-			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<T::AccountId>>();
+			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<Did>>();
 			let prime = members.last().cloned().unwrap();
 			let prime_lookup = T::Lookup::unlookup(prime.clone());
 			set_members::<T, I>(members, None);
@@ -483,7 +486,7 @@ mod benchmark {
 
 		clear_prime {
 			let m in 1 .. T::MaxMembers::get();
-			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<T::AccountId>>();
+			let members = (0..m).map(|i| account("member", i, SEED)).collect::<Vec<Did>>();
 			let prime = members.last().cloned().unwrap();
 			set_members::<T, I>(members, None);
 		}: {
