@@ -2,7 +2,8 @@
 members = [
     "metamui-primitives",
     "node-validators",
-    "validator-set"
+    "validator-set",
+    "collective"
 ]
 [profile.release]
 panic = "unwind"
