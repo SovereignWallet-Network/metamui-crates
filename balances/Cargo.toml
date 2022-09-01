@@ -50,16 +50,16 @@ default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 branch = 'polkadot-v0.9.26'
 
-[dependencies.pallet-transaction-payment]
+[dev-dependencies.pallet-transaction-payment]
 git = 'https://github.com/paritytech/substrate.git'
 branch = 'polkadot-v0.9.26'
 
-[dependencies.sp-core]
+[dev-dependencies.sp-core]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 branch = 'polkadot-v0.9.26'
 
-[dependencies.sp-io]
+[dev-dependencies.sp-io]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 branch = 'polkadot-v0.9.26'
