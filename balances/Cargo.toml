@@ -64,6 +64,11 @@ default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 branch = 'polkadot-v0.9.26'
 
+[dependencies.metamui-primitives]
+default-features = false
+path = '../metamui-primitives'
+version = '0.0.1'
+
 [features]
 default = ["std"]
 std = [

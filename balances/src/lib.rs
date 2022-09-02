@@ -158,12 +158,12 @@ mod tests;
 mod benchmarking;
 mod tests_composite;
 mod tests_local;
-#[cfg(test)]
-mod tests_reentrancy;
 pub mod weights;
 
 pub use self::imbalances::{NegativeImbalance, PositiveImbalance};
 use codec::{Codec, Decode, Encode, MaxEncodedLen};
+use metamui_primitives::{Did, traits::DidResolve};
+
 #[cfg(feature = "std")]
 use frame_support::traits::GenesisBuild;
 use frame_support::{
@@ -224,6 +224,8 @@ pub mod pallet {
 
 		/// The means of storing the balances of an account.
 		type AccountStore: StoredMap<Self::AccountId, AccountData<Self::Balance>>;
+
+		type DidResolution: DidResolve<Self::AccountId>;
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
@@ -288,6 +290,46 @@ pub mod pallet {
 			)?;
 			Ok(().into())
 		}
+
+        /// Transfer some liquid free balance to another account with Memo.
+        ///
+        /// `transfer` will set the `FreeBalance` of the sender and receiver.
+        /// It will decrease the total issuance of the system by the `TransferFee`.
+        /// If the sender's account is below the existential deposit as a result
+        /// of the transfer, the account will be reaped.
+        ///
+        /// The dispatch origin for this call must be `Signed` by the transactor.
+        ///
+        /// # <weight>
+        /// - Dependent on arguments but not critical, given proper implementations for
+        ///   input config types. See related functions below.
+        /// - It contains a limited number of reads and writes internally and no complex computation.
+        ///
+        /// Related functions:
+        ///
+        ///   - `ensure_can_withdraw` is always called internally but has a bounded complexity.
+        ///   - Transferring balances to accounts that did not exist before will cause
+        ///      `T::OnNewAccount::on_new_account` to be called.
+        ///   - Removing enough funds from an account will trigger `T::DustRemoval::on_unbalanced`.
+        ///   - `transfer_keep_alive` works the same way as `transfer`, but has an additional
+        ///     check that the transfer will not kill the origin account.
+        /// ---------------------------------
+        /// - Base Weight: 73.64 µs, worst case scenario (account created, account removed)
+        /// - DB Weight: 1 Read and 1 Write to destination account
+        /// - Origin account is already in memory, so no DB operations for them.
+        /// # </weight>
+        #[weight = T::WeightInfo::transfer()]
+        pub fn transfer_with_memo(
+            origin: OriginFor<T>,
+            dest: <T::Lookup as StaticLookup>::Source,
+            #[compact] value: T::Balance,
+            memo: Memo,
+        ) {
+            let transactor = ensure_signed(origin)?;
+            let dest = T::Lookup::lookup(dest)?;
+            ensure!(memo.is_valid(), Error::<T, I>::InvalidMemoLength);
+            <Self as Currency<_>>::transfer(&transactor, &dest, value, ExistenceRequirement::AllowDeath)?;
+        }		
 
 		/// Set the balances of a given account.
 		///
@@ -433,6 +475,21 @@ pub mod pallet {
 			let _leftover = <Self as ReservableCurrency<_>>::unreserve(&who, amount);
 			Ok(())
 		}
+
+		#[weight = 1]
+        pub fn burn_balance(
+            origin: OriginFor<T>,
+            dest: <T::Lookup as StaticLookup>::Source,
+            #[compact] amount: T::Balance
+        ) {
+            T::ApproveOrigin::ensure_origin(origin)?;
+            let dest = T::Lookup::lookup(dest)?;
+            ensure!(<Self as Currency<_>>::can_slash(&dest, amount), Error::<T, I>::BalanceTooLow);
+            let _ = <Self as Currency<_>>::slash(&dest, amount);
+            let _ = <Self as Currency<_>>::burn(amount);
+            let dest_did = T::DidResolution::get_did_from_account_id(&dest);
+            Self::deposit_event(RawEvent::BalanceBurned(dest_did, amount));
+        }
 	}
 
 	#[pallet::event]
@@ -443,6 +500,8 @@ pub mod pallet {
 		/// An account was removed whose balance was non-zero but below ExistentialDeposit,
 		/// resulting in an outright loss.
 		DustLost { account: T::AccountId, amount: T::Balance },
+		/// Transfer succeeded. \[from, to, value\]
+		Transfer(Did, Did, Balance),
 		/// Transfer succeeded.
 		Transfer { from: T::AccountId, to: T::AccountId, amount: T::Balance },
 		/// A balance was set by root.
@@ -451,6 +510,8 @@ pub mod pallet {
 		Reserved { who: T::AccountId, amount: T::Balance },
 		/// Some balance was unreserved (moved from reserved to free).
 		Unreserved { who: T::AccountId, amount: T::Balance },
+        /// Some balance was burned from given account, total Issuance reduced
+		BalanceBurned(Did, Balance),
 		/// Some balance was moved from the reserve of the first account to the second account.
 		/// Final argument indicates the destination balance type.
 		ReserveRepatriated {
@@ -475,16 +536,26 @@ pub mod pallet {
 		LiquidityRestrictions,
 		/// Balance too low to send value
 		InsufficientBalance,
-		/// Value too low to create account due to existential deposit
-		ExistentialDeposit,
 		/// Transfer/payment would kill account
 		KeepAlive,
 		/// A vesting schedule already exists for this account
 		ExistingVestingSchedule,
+        /// recipent account must have registered DID
+		RecipentDIDNotRegistered,
 		/// Beneficiary account must pre-exist
 		DeadAccount,
 		/// Number of named reserves exceed MaxReserves
 		TooManyReserves,
+        /// Got an overflow after adding
+        Overflow,
+        /// Value too low to create account due to existential deposit
+        ExistentialDeposit,
+        /// Beneficiary account must pre-exist
+        DeadAccount,
+        // Memo length too long.
+        InvalidMemoLength,
+        /// Balance low
+        BalanceTooLow
 	}
 
 	/// The total units issued in the system.
@@ -741,6 +812,7 @@ impl<T: Config<I>, I: 'static> Drop for DustCleaner<T, I> {
 		}
 	}
 }
+type AccountStore = T::AccountStore;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Get the free balance of an account.
@@ -1483,6 +1555,12 @@ where
 			return Ok(())
 		}
 
+		// ensure that the recipent accountId has been mapped to a DID, else return
+		ensure!(
+			T::DidResolution::did_exists(&dest),
+			Error::<T, I>::RecipentDIDNotRegistered
+		);
+
 		Self::try_mutate_account_with_dust(
 			dest,
 			|to_account, _| -> Result<DustCleaner<T, I>, DispatchError> {
@@ -1527,12 +1605,10 @@ where
 			},
 		)?;
 
-		// Emit transfer event.
-		Self::deposit_event(Event::Transfer {
-			from: transactor.clone(),
-			to: dest.clone(),
-			amount: value,
-		});
+        // Emit transfer event - fetch DID of account to emit event correctly
+        let transactor_did = T::DidResolution::get_did_from_account_id(&transactor);
+        let dest_did = T::DidResolution::get_did_from_account_id(&dest);
+        Self::deposit_event(RawEvent::Transfer(transactor_did, dest_did, value));
 
 		Ok(())
 	}
