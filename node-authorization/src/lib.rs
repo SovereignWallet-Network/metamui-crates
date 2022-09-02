@@ -48,6 +48,7 @@ pub use pallet::*;
 use sp_core::OpaquePeerId as PeerId;
 use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
 pub use weights::WeightInfo;
+use metamui_primitives::{Did, traits::DidResolve};
 
 #[frame_support::pallet]
 pub mod pallet {
