@@ -1,5 +1,5 @@
 [package]
-name = 'pallet-node-validators'
+name = 'pallet-node-authorities'
 version = '0.0.1'
 authors = ['Metamui']
 edition = '2021'
