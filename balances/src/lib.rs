@@ -1602,7 +1602,7 @@ where
 		}
 
 		// ensure that the recipent accountId has been mapped to a DID, else return
-		// ensure!(T::DidResolution::did_exists(MultiAddress::Id(dest)).unwrap(), Error::<T, I>::RecipentDIDNotRegistered);
+		ensure!(T::DidResolution::did_exists(MultiAddress::Id(dest.clone())).unwrap(), Error::<T, I>::RecipentDIDNotRegistered);
 
 		Self::try_mutate_account_with_dust(
 			dest,
