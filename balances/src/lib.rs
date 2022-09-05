@@ -162,7 +162,7 @@ pub mod weights;
 
 pub use self::imbalances::{NegativeImbalance, PositiveImbalance};
 use codec::{Codec, Decode, Encode, MaxEncodedLen};
-use metamui_primitives::{Did, traits::DidResolve};
+use metamui_primitives::{Did, traits::{DidResolve, MultiAddress}};
 
 #[cfg(feature = "std")]
 use frame_support::traits::GenesisBuild;
@@ -189,9 +189,55 @@ use sp_runtime::{
 };
 use sp_std::{cmp, fmt::Debug, mem, ops::BitOr, prelude::*, result};
 pub use weights::WeightInfo;
-
 pub use pallet::*;
 
+/// Type for leaving a note when sending a transaction.
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Debug, TypeInfo)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Memo(Vec<u8>);
+
+/// The max length of Memo allowed
+pub const MAXIMUM_MEMO_LEN: u32 = 128;
+
+impl From<Vec<u8>> for Memo {
+    fn from(raw: Vec<u8>) -> Self {
+        Self(raw)
+    }
+}
+
+impl From<&[u8]> for Memo {
+    fn from(raw: &[u8]) -> Self {
+        Self(raw.to_vec())
+    }
+}
+
+impl AsRef<[u8]> for Memo {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::fmt::Display for Memo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", String::from_utf8_lossy(&self.0))
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl core::fmt::Display for Memo {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl Memo {
+    /// Add custom checks if required.
+    /// Now adding only Memo length check to avoid extreme high length memo due to fee less transaction
+    pub fn is_valid(&self) -> bool {
+        return !(self.0.len() > MAXIMUM_MEMO_LEN as usize);
+    }
+}
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -241,6 +287,9 @@ pub mod pallet {
 
 		/// The id type for named reserves.
 		type ReserveIdentifier: Parameter + Member + MaxEncodedLen + Ord + Copy;
+
+		/// Origin from which approvals must come.
+		type ApproveOrigin: EnsureOrigin<Self::Origin>;
 	}
 
 	#[pallet::pallet]
@@ -318,17 +367,18 @@ pub mod pallet {
         /// - DB Weight: 1 Read and 1 Write to destination account
         /// - Origin account is already in memory, so no DB operations for them.
         /// # </weight>
-        #[weight = T::WeightInfo::transfer()]
+        #[pallet::weight(T::WeightInfo::transfer())]
         pub fn transfer_with_memo(
             origin: OriginFor<T>,
             dest: <T::Lookup as StaticLookup>::Source,
-            #[compact] value: T::Balance,
+            #[pallet::compact] value: T::Balance,
             memo: Memo,
-        ) {
+        ) -> DispatchResultWithPostInfo {
             let transactor = ensure_signed(origin)?;
             let dest = T::Lookup::lookup(dest)?;
             ensure!(memo.is_valid(), Error::<T, I>::InvalidMemoLength);
             <Self as Currency<_>>::transfer(&transactor, &dest, value, ExistenceRequirement::AllowDeath)?;
+			Ok(().into())
         }		
 
 		/// Set the balances of a given account.
@@ -476,19 +526,20 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[weight = 1]
+		#[pallet::weight(T::WeightInfo::force_unreserve())]
         pub fn burn_balance(
             origin: OriginFor<T>,
             dest: <T::Lookup as StaticLookup>::Source,
-            #[compact] amount: T::Balance
-        ) {
+            #[pallet::compact] amount: T::Balance
+        ) -> DispatchResultWithPostInfo {
             T::ApproveOrigin::ensure_origin(origin)?;
             let dest = T::Lookup::lookup(dest)?;
             ensure!(<Self as Currency<_>>::can_slash(&dest, amount), Error::<T, I>::BalanceTooLow);
             let _ = <Self as Currency<_>>::slash(&dest, amount);
             let _ = <Self as Currency<_>>::burn(amount);
-            let dest_did = T::DidResolution::get_did_from_account_id(&dest);
-            Self::deposit_event(RawEvent::BalanceBurned(dest_did, amount));
+            let dest_did = T::DidResolution::get_account_id(&dest).unwrap();
+            Self::deposit_event(Event::BalanceBurned(dest_did, amount));
+			Ok(().into())
         }
 	}
 
@@ -501,9 +552,7 @@ pub mod pallet {
 		/// resulting in an outright loss.
 		DustLost { account: T::AccountId, amount: T::Balance },
 		/// Transfer succeeded. \[from, to, value\]
-		Transfer(Did, Did, Balance),
-		/// Transfer succeeded.
-		Transfer { from: T::AccountId, to: T::AccountId, amount: T::Balance },
+		Transfer(Did, Did, T::Balance),
 		/// A balance was set by root.
 		BalanceSet { who: T::AccountId, free: T::Balance, reserved: T::Balance },
 		/// Some balance was reserved (moved from free to reserved).
@@ -511,7 +560,7 @@ pub mod pallet {
 		/// Some balance was unreserved (moved from reserved to free).
 		Unreserved { who: T::AccountId, amount: T::Balance },
         /// Some balance was burned from given account, total Issuance reduced
-		BalanceBurned(Did, Balance),
+		BalanceBurned(Did, T::Balance),
 		/// Some balance was moved from the reserve of the first account to the second account.
 		/// Final argument indicates the destination balance type.
 		ReserveRepatriated {
@@ -550,8 +599,6 @@ pub mod pallet {
         Overflow,
         /// Value too low to create account due to existential deposit
         ExistentialDeposit,
-        /// Beneficiary account must pre-exist
-        DeadAccount,
         // Memo length too long.
         InvalidMemoLength,
         /// Balance low
@@ -812,7 +859,6 @@ impl<T: Config<I>, I: 'static> Drop for DustCleaner<T, I> {
 		}
 	}
 }
-type AccountStore = T::AccountStore;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Get the free balance of an account.
@@ -1556,10 +1602,7 @@ where
 		}
 
 		// ensure that the recipent accountId has been mapped to a DID, else return
-		ensure!(
-			T::DidResolution::did_exists(&dest),
-			Error::<T, I>::RecipentDIDNotRegistered
-		);
+		// ensure!(T::DidResolution::did_exists(MultiAddress::Id(dest)).unwrap(), Error::<T, I>::RecipentDIDNotRegistered);
 
 		Self::try_mutate_account_with_dust(
 			dest,
@@ -1606,9 +1649,9 @@ where
 		)?;
 
         // Emit transfer event - fetch DID of account to emit event correctly
-        let transactor_did = T::DidResolution::get_did_from_account_id(&transactor);
-        let dest_did = T::DidResolution::get_did_from_account_id(&dest);
-        Self::deposit_event(RawEvent::Transfer(transactor_did, dest_did, value));
+        let transactor_did = T::DidResolution::get_account_id(&transactor).unwrap();
+        let dest_did = T::DidResolution::get_account_id(&dest).unwrap();
+        Self::deposit_event(Event::Transfer(transactor_did, dest_did, value));
 
 		Ok(())
 	}
