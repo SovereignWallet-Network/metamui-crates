@@ -2,8 +2,9 @@ use super::*;
 use codec::{Decode, Encode};
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::RuntimeDebug;
+use scale_info::TypeInfo;
 use frame_support::{
-  dispatch::{DispatchError, DispatchResult},
+  dispatch::{DispatchError},
 };
 
 /// Trait to resolve Did
@@ -20,7 +21,7 @@ pub trait DidResolve<AccountId> {
 /// This is necessary to compile all other pallets that depend on the accountID field
 /// Once all pallets have been ported to the custom DID format we can remove the dependency
 /// on this struct and lookup trait in general
-#[derive(Encode, Decode, PartialEq, Eq, Clone, RuntimeDebug)]
+#[derive(Encode, Decode, PartialEq, Eq, Clone, TypeInfo, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub enum MultiAddress<AccountId> {
     /// type for regular pubkey accountid
