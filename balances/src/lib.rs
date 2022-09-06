@@ -528,19 +528,19 @@ pub mod pallet {
 
 		#[pallet::weight(T::WeightInfo::force_unreserve())]
   	pub fn burn_balance(
-  	    origin: OriginFor<T>,
-  	    dest: <T::Lookup as StaticLookup>::Source,
-  	    #[pallet::compact] amount: T::Balance
-  	) -> DispatchResultWithPostInfo {
-  	    T::ApproveOrigin::ensure_origin(origin)?;
-  	    let dest = T::Lookup::lookup(dest)?;
-  	    ensure!(<Self as Currency<_>>::can_slash(&dest, amount), Error::<T, I>::BalanceTooLow);
-  	    let _ = <Self as Currency<_>>::slash(&dest, amount);
-  	    let _ = <Self as Currency<_>>::burn(amount);
-  	    let dest_did = T::DidResolution::get_account_id(&dest).unwrap();
-  	    Self::deposit_event(Event::BalanceBurned(dest_did, amount));
-				Ok(().into())
-      }
+			origin: OriginFor<T>,
+			dest: <T::Lookup as StaticLookup>::Source,
+			#[pallet::compact] amount: T::Balance
+		) -> DispatchResultWithPostInfo {
+			T::ApproveOrigin::ensure_origin(origin)?;
+			let dest = T::Lookup::lookup(dest)?;
+			ensure!(<Self as Currency<_>>::can_slash(&dest, amount), Error::<T, I>::BalanceTooLow);
+			let _ = <Self as Currency<_>>::slash(&dest, amount);
+			let _ = <Self as Currency<_>>::burn(amount);
+			let dest_did = T::DidResolution::get_account_id(&dest).unwrap();
+			Self::deposit_event(Event::BalanceBurned(dest_did, amount));
+			Ok(().into())
+		}
 	}
 
 	#[pallet::event]
