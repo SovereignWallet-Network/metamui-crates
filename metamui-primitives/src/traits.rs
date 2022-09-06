@@ -3,14 +3,11 @@ use codec::{Decode, Encode};
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
-use frame_support::{
-  dispatch::{DispatchError},
-};
 
 /// Trait to resolve Did
 pub trait DidResolve<AccountId> {
   /// return if an accountId is mapped to a DID
-  fn did_exists(x: MultiAddress<AccountId>) -> Result<bool, DispatchError>;
+  fn did_exists(x: MultiAddress<AccountId>) -> bool;
   /// convert accountId to DID
   fn get_account_id(k: &AccountId) -> Option<Did>;
 }
