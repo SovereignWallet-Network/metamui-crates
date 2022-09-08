@@ -25,7 +25,7 @@ mod tests {
       true
     }
     /// convert accountId to DID
-    fn get_account_id(k: &AccountId) -> Option<Did> {
+    fn get_did(k: &AccountId) -> Option<Did> {
       Some(*b"did:ssid:swn/0/0/0/0/0/0/0/0/0/0")
     }
   }

@@ -1345,7 +1345,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-node-validators"
+name = "pallet-node-authorities"
 version = "0.0.1"
 dependencies = [
  "frame-benchmarking",

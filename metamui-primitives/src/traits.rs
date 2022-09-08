@@ -2,16 +2,16 @@ use super::*;
 use codec::{Decode, Encode};
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::RuntimeDebug;
-use frame_support::{
-  dispatch::{DispatchError, DispatchResult},
-};
+use scale_info::TypeInfo;
 
 /// Trait to resolve Did
 pub trait DidResolve<AccountId> {
   /// return if an accountId is mapped to a DID
-  fn did_exists(x: MultiAddress<AccountId>) -> Result<bool, DispatchError>;
+  fn did_exists(x: MultiAddress<AccountId>) -> bool;
   /// convert accountId to DID
-  fn get_account_id(k: &AccountId) -> Option<Did>;
+  fn get_did(k: &AccountId) -> Option<Did>;
+  /// convert accountId to DID
+  fn get_account_id(k: &Did) -> Option<AccountId>;
 }
 
 
@@ -20,7 +20,7 @@ pub trait DidResolve<AccountId> {
 /// This is necessary to compile all other pallets that depend on the accountID field
 /// Once all pallets have been ported to the custom DID format we can remove the dependency
 /// on this struct and lookup trait in general
-#[derive(Encode, Decode, PartialEq, Eq, Clone, RuntimeDebug)]
+#[derive(Encode, Decode, PartialEq, Eq, Clone, TypeInfo, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub enum MultiAddress<AccountId> {
     /// type for regular pubkey accountid
