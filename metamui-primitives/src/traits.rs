@@ -9,7 +9,9 @@ pub trait DidResolve<AccountId> {
   /// return if an accountId is mapped to a DID
   fn did_exists(x: MultiAddress<AccountId>) -> bool;
   /// convert accountId to DID
-  fn get_account_id(k: &AccountId) -> Option<Did>;
+  fn get_did(k: &AccountId) -> Option<Did>;
+  /// convert accountId to DID
+  fn get_account_id(k: &Did) -> Option<AccountId>;
 }
 
 

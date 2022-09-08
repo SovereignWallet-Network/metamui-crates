@@ -272,7 +272,7 @@ pub mod pallet {
 		#[pallet::weight(50_000_000)]
 		pub fn change_key(origin: OriginFor<T>, new: Did) -> DispatchResult {
 			let remove = ensure_signed(origin)?;
-			let remove = T::DidResolution::get_account_id(&remove).unwrap();
+			let remove = T::DidResolution::get_did(&remove).unwrap();
 			ensure!(T::DidResolution::did_exists(MultiAddress::Did(new)), Error::<T, I>::DIDDoesNotExist);
 
 			if remove != new {
