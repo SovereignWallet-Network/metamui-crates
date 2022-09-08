@@ -537,7 +537,7 @@ pub mod pallet {
 			ensure!(<Self as Currency<_>>::can_slash(&dest, amount), Error::<T, I>::BalanceTooLow);
 			let _ = <Self as Currency<_>>::slash(&dest, amount);
 			let _ = <Self as Currency<_>>::burn(amount);
-			let dest_did = T::DidResolution::get_account_id(&dest).unwrap();
+			let dest_did = T::DidResolution::get_did(&dest).unwrap();
 			Self::deposit_event(Event::BalanceBurned(dest_did, amount));
 			Ok(().into())
 		}
@@ -1616,7 +1616,7 @@ where
 		}
 
 		// ensure that the recipent accountId has been mapped to a DID, else return
-		ensure!(T::DidResolution::did_exists(MultiAddress::Id(dest.clone())).unwrap(), Error::<T, I>::RecipentDIDNotRegistered);
+		ensure!(T::DidResolution::did_exists(MultiAddress::Id(dest.clone())), Error::<T, I>::RecipentDIDNotRegistered);
 
 		Self::try_mutate_account_with_dust(
 			dest,
@@ -1663,8 +1663,8 @@ where
 		)?;
 
     // Emit transfer event - fetch DID of account to emit event correctly
-    let transactor_did = T::DidResolution::get_account_id(&transactor).unwrap();
-    let dest_did = T::DidResolution::get_account_id(&dest).unwrap();
+    let transactor_did = T::DidResolution::get_did(&transactor).unwrap();
+    let dest_did = T::DidResolution::get_did(&dest).unwrap();
     Self::deposit_event(Event::Transfer(transactor_did, dest_did, value));
 
 		Ok(())
