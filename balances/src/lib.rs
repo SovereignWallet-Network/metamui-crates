@@ -402,7 +402,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
-			<Pallet<T,I>>::ensure_did_mapped(&who)?;
+			<Pallet<T,I>>::ensure_did_exists(&who)?;
 			let existential_deposit = T::ExistentialDeposit::get();
 
 			let wipeout = new_free + new_reserved < existential_deposit;
@@ -524,7 +524,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
-			<Pallet<T,I>>::ensure_did_mapped(&who)?;
+			Self::ensure_did_exists(&who)?;
 			let _leftover = <Self as ReservableCurrency<_>>::unreserve(&who, amount);
 			Ok(())
 		}
@@ -537,7 +537,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			T::ApproveOrigin::ensure_origin(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
-			<Pallet<T,I>>::ensure_did_mapped(&dest)?;
+			Self::ensure_did_exists(&dest)?;
 			ensure!(<Self as Currency<_>>::can_slash(&dest, amount), Error::<T, I>::BalanceTooLow);
 			let _ = <Self as Currency<_>>::slash(&dest, amount);
 			let _ = <Self as Currency<_>>::burn(amount);
@@ -716,13 +716,6 @@ pub mod pallet {
 					.is_ok());
 			}
 		}
-	}
-}
-
-impl<T: Config<I>, I: 'static> Pallet<T, I> { 
-  fn ensure_did_mapped(fetched_id: &T::AccountId) -> DispatchResult{
-		ensure!(T::DidResolution::did_exists(MultiAddress::Id(fetched_id.clone())), Error::<T, I>::RecipentDIDNotRegistered);
-		Ok(())
 	}
 }
 
@@ -1180,6 +1173,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		});
 		Ok(actual)
 	}
+
+	/// Check if the AccountId is mapped to some Did in our system
+	fn ensure_did_exists(fetched_id: &T::AccountId) -> DispatchResult{
+		ensure!(T::DidResolution::did_exists(MultiAddress::Id(fetched_id.clone())), Error::<T, I>::RecipentDIDNotRegistered);
+		Ok(())
+	}
 }
 
 impl<T: Config<I>, I: 'static> fungible::Inspect<T::AccountId> for Pallet<T, I> {
@@ -1627,7 +1626,7 @@ where
 		}
 
 		// ensure that the recipent accountId has been mapped to a DID, else return
-		<Pallet<T,I>>::ensure_did_mapped(dest)?;
+		<Pallet<T,I>>::ensure_did_exists(dest)?;
 
 		Self::try_mutate_account_with_dust(
 			dest,
