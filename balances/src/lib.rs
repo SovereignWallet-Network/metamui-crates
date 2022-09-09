@@ -402,7 +402,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
-			<Pallet<T,I>>::ensure_did_exists(&who)?;
+			Self::ensure_did_exists(&who)?;
 			let existential_deposit = T::ExistentialDeposit::get();
 
 			let wipeout = new_free + new_reserved < existential_deposit;
