@@ -3,7 +3,8 @@ members = [
     "metamui-primitives",
     "node-authorities",
     "validator-set",
-    "collective"
+    "collective",
+    "balances"
 ]
 [profile.release]
 panic = "unwind"
