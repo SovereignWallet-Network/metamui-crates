@@ -1626,7 +1626,7 @@ where
 		}
 
 		// ensure that the recipent accountId has been mapped to a DID, else return
-		<Pallet<T,I>>::ensure_did_exists(dest)?;
+		Self::ensure_did_exists(dest)?;
 
 		Self::try_mutate_account_with_dust(
 			dest,
