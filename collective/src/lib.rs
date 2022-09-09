@@ -440,7 +440,7 @@ pub mod pallet {
 			#[pallet::compact] length_bound: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let who_did = T::DidResolution::get_did(&who).unwrap();
+			let who_did = T::DidResolution::get_did(&who).unwrap_or_default();
 			let members = Self::members();
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 			let proposal_len = proposal.encoded_size();
@@ -513,7 +513,7 @@ pub mod pallet {
 			#[pallet::compact] length_bound: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let who_did = T::DidResolution::get_did(&who).unwrap();
+			let who_did = T::DidResolution::get_did(&who).unwrap_or_default();
 			let members = Self::members();
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
@@ -565,7 +565,7 @@ pub mod pallet {
 			approve: bool,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let who_did = T::DidResolution::get_did(&who).unwrap();
+			let who_did = T::DidResolution::get_did(&who).unwrap_or_default();
 			let members = Self::members();
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
