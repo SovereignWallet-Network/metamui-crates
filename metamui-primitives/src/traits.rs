@@ -10,10 +10,9 @@ pub trait DidResolve<AccountId> {
   fn did_exists(x: MultiAddress<AccountId>) -> bool;
   /// convert accountId to DID
   fn get_did(k: &AccountId) -> Option<Did>;
-  /// convert accountId to DID
+  /// convert DID to accountId
   fn get_account_id(k: &Did) -> Option<AccountId>;
 }
-
 
 /// Use this struct for the account lookup
 /// This struct can have the value of either rawbytes or accountid
