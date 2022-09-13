@@ -408,7 +408,6 @@ pub mod pallet {
     ///
     /// - `node`: identifier of the node.
 
-		????????-------==REDO==-------????????
 		#[pallet::weight(T::WeightInfo::claim_node())]
 		pub fn claim_node(origin: OriginFor<T>, node: PeerId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -416,10 +415,9 @@ pub mod pallet {
       ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
       ensure!(!Owners::contains_key(&node),Error::<T>::AlreadyClaimed);
       
-			//Fix Later
-			ensure!(T::DidResolution::did_registered(&sender_did), Error::<T>::DIDNotRegistered);
-
+			ensure!(T::DidResolution::did_exists(MultiAddress::Did(sender_did.clone())), Error::<T>::DIDNotRegistered)  
 			let mut peer_ids = PeerIds::get(sender_did);
+
       peer_ids.push(node.clone());
       PeerIds::insert(sender_did, peer_ids);
       Owners::insert(&node, &sender_did);
@@ -607,8 +605,8 @@ impl<T: Config> Pallet<T> {
 
 	fn can_add_well_known_node(nodes: &BTreeSet<PeerId>, node: &PeerId, owner: Did, staking_amount: T::Balance) -> DispatchResult {
 		ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
-		//Fix Later
-		ensure!(T::DidResolution::did_registered(&owner), Error::<T>::DIDNotRegistered);
+
+		ensure!(T::DidResolution::did_exists(MultiAddress::Did(owner.clone())), Error::<T>::DIDNotRegistered);
 		ensure!(nodes.len() < T::MaxWellKnownNodes::get() as usize, Error::<T>::TooManyNodes);
 		ensure!(!nodes.contains(&node), Error::<T>::AlreadyJoined);
 		ensure!(Owners::contains_key(&node), Error::<T>::NotClaimed);
