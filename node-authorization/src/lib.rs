@@ -530,50 +530,49 @@ pub mod pallet {
 			Ok(())
 		}
 
-		        /// Slash validator
-        ///
-        /// - `did`: identifier of the validator.
-        /// - `amount`: Amount of slashing.
-        #[weight = <T as Config>::WeightInfo::slash_validator()]
-        pub fn slash_validator(
-          origin,
-          did: Did,
-          amount: T::Balance
-        ){
-          T::SlashOrigin::ensure_origin(origin)?;
-          let validator_acc = T::DidResolution::get_account_id(&did)?;
-          ensure!(balances::Module::<T>::can_slash(&validator_acc, amount), Error::<T>::InsufficientBalance);
-
-          let neg_imbalance = balances::Module::<T>::slash(&validator_acc, amount);
-					T::Slash::on_unbalanced(neg_imbalance.0);
-          Self::deposit_event(Event::ValidatorSlashed(did));
-        }
-
-        /// Set reserved node every block. It may not be enabled depends on the offchain
-        /// worker settings when starting the node.
-        fn offchain_worker(now: T::BlockNumber) {
-          let network_state = sp_io::offchain::network_state();
-          match network_state {
-            Err(_) => debug::error!("Error: failed to get network state of node at {:?}", now),
-            Ok(state) => {
-              let encoded_peer = state.peer_id.0;
-              match Decode::decode(&mut &encoded_peer[..]) {
-                Err(_) => debug::error!("Error: failed to decode PeerId at {:?}", now),
-                Ok(node) => sp_io::offchain::set_authorized_nodes(
-                  Self::get_authorized_nodes(&PeerId(node)),
-                  true
-                )
-              }
-            }
-          }
-        }
-
-        fn on_runtime_upgrade() -> frame_support::weights::Weight {
-          migration::migrate::<T>()
-        }
-    }
-	}
-}
+		 /// Slash validator
+     ///
+     /// - `did`: identifier of the validator.
+     /// - `amount`: Amount of slashing.
+     #[weight = <T as Config>::WeightInfo::slash_validator()]
+     pub fn slash_validator(
+       origin,
+       did: Did,
+       amount: T::Balance
+     ){
+       T::SlashOrigin::ensure_origin(origin)?;
+       let validator_acc = T::DidResolution::get_account_id(&did)?;
+       ensure!(balances::Module::<T>::can_slash(&validator_acc, amount), Error::<T>::InsufficientBalance);
+ 
+       let neg_imbalance = balances::Module::<T>::slash(&validator_acc, amount);
+		 	T::Slash::on_unbalanced(neg_imbalance.0);
+       Self::deposit_event(Event::ValidatorSlashed(did));
+     }
+ 
+     /// Set reserved node every block. It may not be enabled depends on the offchain
+     /// worker settings when starting the node.
+     fn offchain_worker(now: T::BlockNumber) {
+       let network_state = sp_io::offchain::network_state();
+       match network_state {
+         Err(_) => debug::error!("Error: failed to get network state of node at {:?}", now),
+         Ok(state) => {
+           let encoded_peer = state.peer_id.0;
+           match Decode::decode(&mut &encoded_peer[..]) {
+             Err(_) => debug::error!("Error: failed to decode PeerId at {:?}", now),
+             Ok(node) => sp_io::offchain::set_authorized_nodes(
+               Self::get_authorized_nodes(&PeerId(node)),
+               true
+             )
+           }
+         }
+       }
+    
+       fn on_runtime_upgrade() -> frame_support::weights::Weight {
+         migration::migrate::<T>()
+       }
+     }
+	 }
+ }
 
 impl<T: Config> Pallet<T> {
 	fn initialize_nodes(nodes: &Vec<(PeerId, Did)>) {
