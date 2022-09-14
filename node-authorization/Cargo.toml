@@ -1,10 +1,9 @@
 [package]
 name = "pallet-node-authorization"
 version = "4.0.0-dev"
-authors = ["Parity Technologies <admin@parity.io>"]
+authors = ["Metamui"]
 edition = "2021"
 license = "Apache-2.0"
-homepage = "https://substrate.io"
 repository = "https://github.com/SovereignWallet-Network/metamui-crates.git"
 description = "Pallet for node authorization"
 
