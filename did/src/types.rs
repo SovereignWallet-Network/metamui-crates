@@ -40,8 +40,8 @@ pub enum DIDType {
 }
 
 
-/// Trait for type that can handle incremental changes to Dids.
-pub trait ChangeDid {
+/// Trait for type to 
+pub trait UpdateDid {
 	fn add_private_did(
 			public_key: PublicKey,
 			identifier: Did,
@@ -69,7 +69,7 @@ pub trait ChangeDid {
 	);
 }
 
-impl ChangeDid for () {
+impl UpdateDid for () {
 	fn add_private_did(
 			_: PublicKey,
 			_: Did,
@@ -92,6 +92,64 @@ impl ChangeDid for () {
 	) {}
 
 	fn update_metadata(
+			_: Did,
+			_: Metadata,
+	) {}
+}
+
+
+/// Trait for type that can handle changes to Dids.
+pub trait DidUpdated {
+	fn on_new_private_did(
+			public_key: PublicKey,
+			identifier: Did,
+			metadata: Metadata,
+	);
+
+	fn on_new_public_did(
+			public_key: PublicKey,
+			identifier: Did,
+			metadata: Metadata,
+			registration_number: RegistrationNumber,
+			company_name: CompanyName,
+	);
+
+	fn on_did_removal(identifier: Did);
+
+	fn on_key_rotation(
+			identifier: Did,
+			public_key: PublicKey,
+	);
+
+	fn on_metadata_updation(
+			identifier: Did,
+			metadata: Metadata,
+	);
+}
+
+impl DidUpdated for () {
+	fn on_new_private_did(
+			_: PublicKey,
+			_: Did,
+			_: Metadata,
+	) {}
+
+	fn on_new_public_did(
+			_: PublicKey,
+			_: Did,
+			_: Metadata,
+			_: RegistrationNumber,
+			_: CompanyName,
+	) {}
+
+	fn on_did_removal(_: Did) {}
+
+	fn on_key_rotation(
+			_: Did,
+			_: PublicKey,
+	) {}
+
+	fn on_metadata_updation(
 			_: Did,
 			_: Metadata,
 	) {}
