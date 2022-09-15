@@ -16,15 +16,15 @@ pub trait DidResolve<AccountId> {
 
 impl<AccountId> DidResolve<AccountId> for () {
     /// return if an accountId is mapped to a DID
-    fn did_exists(x: MultiAddress<AccountId>) -> bool {
+    fn did_exists(_: MultiAddress<AccountId>) -> bool {
         false
     }
     /// convert accountId to DID
-    fn get_did(k: &AccountId) -> Option<Did> {
+    fn get_did(_: &AccountId) -> Option<Did> {
         None
     }
     /// convert accountId to DID
-    fn get_account_id(k: &Did) -> Option<AccountId> {
+    fn get_account_id(_: &Did) -> Option<AccountId> {
         None
     }
 }
