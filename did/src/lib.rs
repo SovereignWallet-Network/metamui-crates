@@ -139,18 +139,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
-
-			// ensure did is valid
-			ensure!(Self::is_did_valid(identifier.clone()), Error::<T>::InvalidDid);
-
-			// ensure did is not already taken
-			ensure!(!DIDs::<T>::contains_key(identifier.clone()), Error::<T>::DIDAlreadyExists);
-
-			// ensure the public key is not already linked to a DID
-			ensure!(
-				!RLookup::<T>::contains_key(Self::get_accountid_from_pubkey(&public_key)),
-				Error::<T>::PublicKeyRegistered
-			);
 			
 			Self::do_create_private_did(public_key, identifier, metadata)?;
 
@@ -179,18 +167,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
-
-			// ensure did is valid
-			ensure!(Self::is_did_valid(identifier.clone()), Error::<T>::InvalidDid);
-
-			// ensure did is not already taken
-			ensure!(!DIDs::<T>::contains_key(identifier.clone()), Error::<T>::DIDAlreadyExists);
-
-			// ensure the public key is not already linked to a DID
-			ensure!(
-				!RLookup::<T>::contains_key(Self::get_accountid_from_pubkey(&public_key)),
-				Error::<T>::PublicKeyRegistered
-			);
 			
 			Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name)?;
 
@@ -227,15 +203,6 @@ pub mod pallet {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
 
-			//reject if the user does not already have DID registered
-			ensure!(DIDs::<T>::contains_key(&identifier), Error::<T>::DIDDoesNotExist);
-
-			// ensure the public key is not already linked to a DID
-			ensure!(
-				!RLookup::<T>::contains_key(Self::get_accountid_from_pubkey(&public_key)),
-				Error::<T>::PublicKeyRegistered
-			);
-
 			Self::do_rotate_key(&identifier, &public_key)?;
 
 			// create key updated event
@@ -253,9 +220,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
-
-			// reject if the user does not already have DID registered
-			ensure!(DIDs::<T>::contains_key(&identifier), Error::<T>::DIDDoesNotExist);
 
 			Self::do_update_metadata(&identifier, &metadata)?;
 
@@ -375,6 +339,19 @@ pub mod pallet {
 			identifier: Did,
 			metadata: Metadata,
 		) -> DispatchResult {
+
+			// ensure did is valid
+			ensure!(Self::is_did_valid(identifier.clone()), Error::<T>::InvalidDid);
+
+			// ensure did is not already taken
+			ensure!(!DIDs::<T>::contains_key(identifier.clone()), Error::<T>::DIDAlreadyExists);
+
+			// ensure the public key is not already linked to a DID
+			ensure!(
+				!RLookup::<T>::contains_key(Self::get_accountid_from_pubkey(&public_key)),
+				Error::<T>::PublicKeyRegistered
+			);
+
 			let current_block_no = <frame_system::Pallet<T>>::block_number();
 
 			// add DID to the storage
@@ -404,6 +381,19 @@ pub mod pallet {
 			registration_number: RegistrationNumber,
 			company_name: CompanyName,
 		) -> DispatchResult {
+
+			// ensure did is valid
+			ensure!(Self::is_did_valid(identifier.clone()), Error::<T>::InvalidDid);
+
+			// ensure did is not already taken
+			ensure!(!DIDs::<T>::contains_key(identifier.clone()), Error::<T>::DIDAlreadyExists);
+
+			// ensure the public key is not already linked to a DID
+			ensure!(
+				!RLookup::<T>::contains_key(Self::get_accountid_from_pubkey(&public_key)),
+				Error::<T>::PublicKeyRegistered
+			);
+
 			let current_block_no = <frame_system::Pallet<T>>::block_number();
 
 			// add DID to the storage
@@ -429,6 +419,10 @@ pub mod pallet {
 	
 		/// Update metadata of public and private did
 		pub fn do_update_metadata(identifier: &Did, metadata: &Metadata) -> DispatchResult {
+
+			// reject if the user does not already have DID registered
+			ensure!(DIDs::<T>::contains_key(&identifier), Error::<T>::DIDDoesNotExist);
+
 			// fetch the existing DID document
 			let (did_doc, block_number) = Self::get_did_details(identifier.clone())?;
 
@@ -459,6 +453,16 @@ pub mod pallet {
 	
 		/// Rotate key of public and private did
 		pub fn do_rotate_key(identifier: &Did, public_key: &PublicKey) -> DispatchResult {
+
+			//reject if the user does not already have DID registered
+			ensure!(DIDs::<T>::contains_key(&identifier), Error::<T>::DIDDoesNotExist);
+
+			// ensure the public key is not already linked to a DID
+			ensure!(
+				!RLookup::<T>::contains_key(Self::get_accountid_from_pubkey(&public_key)),
+				Error::<T>::PublicKeyRegistered
+			);
+
 			// fetch the existing DID document
 			let (did_doc, last_updated_block) = Self::get_did_details(identifier.clone())?;
 			// Get block number
@@ -529,6 +533,7 @@ pub mod pallet {
 	
 		/// Remove Did 
 		pub fn do_remove(identifier: &Did) -> DispatchResult {
+			
 			let (did_doc, _) = Self::get_did_details(identifier.clone())?;
 
 			// remove DID from storage
