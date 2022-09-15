@@ -4,7 +4,8 @@ members = [
     "node-authorities",
     "validator-set",
     "collective",
-    "balances"
+    "balances",
+    "did"
 ]
 [profile.release]
 panic = "unwind"
