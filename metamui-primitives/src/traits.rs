@@ -72,3 +72,61 @@ impl<AccountId: Default> Default for MultiAddress<AccountId> {
         MultiAddress::Id(Default::default())
     }
 }
+
+
+/// Trait for type that can handle incremental changes to Dids.
+pub trait ChangeDid {
+    fn add_private_did(
+        public_key: PublicKey,
+        identifier: Did,
+        metadata: Metadata,
+    );
+
+    fn add_public_did(
+        public_key: PublicKey,
+        identifier: Did,
+        metadata: Metadata,
+        registration_number: RegistrationNumber,
+        company_name: CompanyName,
+    );
+
+    fn remove_did(identifier: Did);
+
+    fn rotate_key(
+        identifier: Did,
+        public_key: PublicKey,
+    );
+
+    fn update_metadata(
+        identifier: Did,
+        metadata: Metadata,
+    );
+}
+
+impl ChangeDid for () {
+    fn add_private_did(
+        public_key: PublicKey,
+        identifier: Did,
+        metadata: Metadata,
+    ) {}
+
+    fn add_public_did(
+        public_key: PublicKey,
+        identifier: Did,
+        metadata: Metadata,
+        registration_number: RegistrationNumber,
+        company_name: CompanyName,
+    ) {}
+
+    fn remove_did(identifier: Did) {}
+
+    fn rotate_key(
+        identifier: Did,
+        public_key: PublicKey,
+    ) {};
+
+    fn update_metadata(
+        identifier: Did,
+        metadata: Metadata,
+    ) {};
+}
