@@ -40,7 +40,7 @@ pub enum DIDType {
 }
 
 
-/// Trait for type to 
+/// Trait to handle Did Crud operations
 pub trait UpdateDid {
 	fn add_private_did(
 			public_key: PublicKey,
