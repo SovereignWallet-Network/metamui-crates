@@ -16,15 +16,15 @@ pub trait DidResolve<AccountId> {
 
 impl<AccountId> DidResolve<AccountId> for () {
     /// return if an accountId is mapped to a DID
-    fn did_exists(x: MultiAddress<AccountId>) -> bool {
+    fn did_exists(_: MultiAddress<AccountId>) -> bool {
         false
     }
     /// convert accountId to DID
-    fn get_did(k: &AccountId) -> Option<Did> {
+    fn get_did(_: &AccountId) -> Option<Did> {
         None
     }
     /// convert accountId to DID
-    fn get_account_id(k: &Did) -> Option<AccountId> {
+    fn get_account_id(_: &Did) -> Option<AccountId> {
         None
     }
 }
@@ -71,62 +71,4 @@ impl<AccountId: Default> Default for MultiAddress<AccountId> {
     fn default() -> Self {
         MultiAddress::Id(Default::default())
     }
-}
-
-
-/// Trait for type that can handle incremental changes to Dids.
-pub trait ChangeDid {
-    fn add_private_did(
-        public_key: PublicKey,
-        identifier: Did,
-        metadata: Metadata,
-    );
-
-    fn add_public_did(
-        public_key: PublicKey,
-        identifier: Did,
-        metadata: Metadata,
-        registration_number: RegistrationNumber,
-        company_name: CompanyName,
-    );
-
-    fn remove_did(identifier: Did);
-
-    fn rotate_key(
-        identifier: Did,
-        public_key: PublicKey,
-    );
-
-    fn update_metadata(
-        identifier: Did,
-        metadata: Metadata,
-    );
-}
-
-impl ChangeDid for () {
-    fn add_private_did(
-        public_key: PublicKey,
-        identifier: Did,
-        metadata: Metadata,
-    ) {}
-
-    fn add_public_did(
-        public_key: PublicKey,
-        identifier: Did,
-        metadata: Metadata,
-        registration_number: RegistrationNumber,
-        company_name: CompanyName,
-    ) {}
-
-    fn remove_did(identifier: Did) {}
-
-    fn rotate_key(
-        identifier: Did,
-        public_key: PublicKey,
-    ) {};
-
-    fn update_metadata(
-        identifier: Did,
-        metadata: Metadata,
-    ) {};
 }
