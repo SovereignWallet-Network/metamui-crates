@@ -122,3 +122,11 @@ pub struct VC<Hash> {
     /// VC payload
     pub vc_property: VCProperty,
 }
+
+/// Trait to get VC details
+pub trait GetVC<Hash> {
+    /// Get VC from VC Id
+    fn get_vc(vc_id: &VCid) -> Option<VC<Hash>>;
+    /// Get if VC is used
+    fn is_vc_used(vc_id: &VCid) -> bool;
+}
