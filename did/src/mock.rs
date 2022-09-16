@@ -1,5 +1,5 @@
 use crate as pallet_did;
-// use metamui_crates::validator_set;
+
 use crate::types::*;
 use frame_support::{
 	traits::{ GenesisBuild, ConstU16, ConstU32, ConstU64, OnInitialize, OnFinalize },
@@ -66,11 +66,6 @@ impl pallet_did::Config for Test {
 	type MaxKeyChanges = ConstU32<16>;
 }
 
-// impl validator_set::Config for Test {
-// 	type Event = Event;
-// 	type ApproveOrigin = frame_system::EnsureRoot<u64>;
-// }
-
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut o = frame_system::GenesisConfig::default()
@@ -90,14 +85,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	}
 		.assimilate_storage(&mut o)
 		.unwrap();
-	
-	
-	// validator_set::GenesisConfig {
-	// 	validators: vec![VALIDATOR_DID],
-	// }
-		// .assimilate_storage::<Test>(&mut o)
-		// .unwrap();
-
 	o.into()
 }
 	

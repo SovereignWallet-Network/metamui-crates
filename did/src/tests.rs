@@ -5,11 +5,8 @@ use super::*;
 
 use frame_support::{ assert_ok, bounded_vec, BoundedVec, traits::{ ConstU32 } };
 use sp_core::{ sr25519 };
-// use sp_runtime::{testing::Header, traits::BlakeTwo256, BuildStorage};
-// use validator_set;
 
-
-
+//START GENESIS TESTING
 #[test]
 fn test_genesis_worked() {
 	new_test_ext().execute_with(|| {
@@ -34,7 +31,11 @@ fn test_genesis_worked() {
 		assert_eq!(block_number, 0);
 	})
 }
+//END GENESIS TESTING
+
 // START ADD_DID TESTING
+
+// SATRT ADD_IVALID_PRIVATE_DID TESTING
 #[test]
 #[should_panic]
 fn test_add_invalid_priavte_did() {
@@ -51,6 +52,9 @@ fn test_add_invalid_priavte_did() {
 		));
 	})
 }
+// END ADD_IVALID_PRIVATE_DID TESTING
+
+// START ADD_IVALID_PUBLIC_DID TESTING
 #[test]
 #[should_panic]
 fn test_add_invalid_public_did() {
@@ -71,6 +75,10 @@ fn test_add_invalid_public_did() {
 		));
 	})
 }
+
+// END ADD_IVALID_PUBLIC_DID TESTING
+
+// START NON_VALIDATOR_ADD_DID TESTING
 #[test]
 #[should_panic]
 fn test_non_validator_adds_did() {
@@ -87,19 +95,22 @@ fn test_non_validator_adds_did() {
 		));
 	})
 }
+// END NON_VALIDATOR_ADD_DID TESTING
 
+// START ADD_PRIVATE_DID TESTING
 #[test]
-fn test_add_did() {
+fn test_add_private_did() {
 	new_test_ext().execute_with(|| {
 		let identifier = *b"did:ssid:Bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 		let public_key = sr25519::Public([2; 32]);
 		let metadata: types::Metadata = "metadata".as_bytes().to_vec().try_into().unwrap();
+		
 
 		assert_ok!(Did::create_private(
 			Origin::signed(VALIDATOR_ACCOUNT),
 			public_key,
 			identifier,
-			metadata.clone()
+			metadata.clone(),
 		));
 
 		assert_eq!(DIDs::<Test>::contains_key(identifier.clone()), true);
@@ -134,7 +145,62 @@ fn test_add_did() {
 		}
 	})
 }
+// END ADD_PRIVATE_DID TESTING
 
+// START ADD_PUBLIC_DID TESTING
+#[test]
+fn test_add_public_did() {
+	new_test_ext().execute_with(|| {
+		let identifier = *b"did:ssid:Bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+		let public_key = sr25519::Public([2; 32]);
+		let metadata: types::Metadata = "metadata".as_bytes().to_vec().try_into().unwrap();
+		let registration_number: types::RegistrationNumber = Default::default();
+		let company_name: types::CompanyName = Default::default();
+		
+		assert_ok!(Did::create_public(
+			Origin::signed(VALIDATOR_ACCOUNT),
+			public_key,
+			identifier,
+			metadata.clone(),
+			registration_number,
+			company_name,
+		));
+
+		assert_eq!(DIDs::<Test>::contains_key(identifier.clone()), true);
+		assert_eq!(Lookup::<Test>::contains_key(identifier.clone()), true);
+		assert_eq!(
+			RLookup::<Test>::contains_key(Did::get_accountid_from_pubkey(&public_key)),
+			true
+		);
+
+		let (did_doc, _block_number) = Did::get_did_details(identifier.clone()).unwrap();
+		match did_doc {
+			types::DIDType::Public(public_did) => {
+				assert_eq!(public_did.identifier, identifier);
+				assert_eq!(public_did.public_key, public_key);
+				assert_eq!(public_did.metadata, metadata);
+				let did_lookup = RLookup::<Test>::get(Did::get_accountid_from_pubkey(&public_key));
+				match did_lookup {
+					Some(did) => assert_eq!(did, identifier.clone()),
+					None => assert!(false),
+				}
+			},
+			types::DIDType::Private(private_did) => {
+				assert_eq!(private_did.identifier, identifier);
+				assert_eq!(private_did.public_key, public_key);
+				assert_eq!(private_did.metadata, metadata);
+				let did_lookup = RLookup::<Test>::get(Did::get_accountid_from_pubkey(&public_key));
+				match did_lookup {
+					Some(did) => assert_eq!(did, identifier.clone()),
+					None => assert!(false),
+				}
+			},
+		}
+	})
+}
+// END ADD_PUBLIC_DID TESTING
+
+// START ADD_EXISTING_DID TESTING
 #[test]
 #[should_panic]
 fn test_add_existing_did() {
@@ -152,7 +218,6 @@ fn test_add_existing_did() {
 		));
 	})
 }
-
 //END ADD_DID TESTING
 
 //START ADD_PUBLIC_KEY TESTING
@@ -185,6 +250,7 @@ fn test_add_existing_pubkey() {
 }
 //END ADD_PUBLIC_KEY TESTING
 
+//START NON_EXITSING_DID_REMOVE TESTING
 #[test]
 #[should_panic]
 fn test_remove_non_existing_did() {
@@ -194,8 +260,9 @@ fn test_remove_non_existing_did() {
 		assert_ok!(Did::remove(Origin::signed(VALIDATOR_ACCOUNT), identifier.clone()));
 	})
 }
+//END NON_EXITSING_DID_REMOVE TESTING
 
-//START REMOVE_DID TESTING
+//START NON_VALIDATOR_REMOVES_DID TESTING
 #[test]
 #[should_panic]
 fn test_non_validator_removes_did() {
@@ -205,7 +272,9 @@ fn test_non_validator_removes_did() {
 		assert_ok!(Did::remove(Origin::signed(NON_VALIDATOR_ACCOUNT), identifier.clone()));
 	})
 }
+//END NON_VALIDATOR_REMOVES_DID TESTING
 
+//START REMOVE_DID TESTING
 #[test]
 fn test_remove_did() {
 	new_test_ext().execute_with(|| {
@@ -296,7 +365,9 @@ fn test_rotate_key() {
 		assert_eq!(block_number, 0);
 	})
 }
+//END ROTATE_KEY TESTING
 
+//START ROTATE_KEY_HISTORY TESTING
 #[test]
 fn test_rotate_key_history() {
 	new_test_ext().execute_with(|| {
@@ -379,8 +450,7 @@ fn test_rotate_key_history() {
 		assert_eq!(block_number2, 3);
 	})
 }
-
-//END ROTATE_KEY TESTING
+//END ROTATE_KEY_HISTORY TESTING
 
 //START ROTATE_DID TESTING
 #[test]
