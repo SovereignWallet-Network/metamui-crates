@@ -53,3 +53,5 @@ pub type Block = generic::Block<Header, OpaqueExtrinsic>;
 pub type BlockId = generic::BlockId<Block>;
 /// DID
 pub type Did = [u8; 32];
+/// VC Id
+pub type VCid = [u8; 32];
