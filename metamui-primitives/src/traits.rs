@@ -5,7 +5,7 @@ use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
 use frame_support::{traits::{ConstU32}, BoundedVec};
 use sp_core::sr25519::{Signature as SRSignature};
-use sp_std::vec::Vec;
+use sp_std::{prelude::*};
 
 
 // DID
