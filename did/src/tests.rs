@@ -35,7 +35,7 @@ fn test_genesis_worked() {
 
 // START ADD_DID TESTING
 
-// SATRT ADD_IVALID_PRIVATE_DID TESTING
+// START ADD_INVALID_PRIVATE_DID TESTING
 #[test]
 #[should_panic]
 fn test_add_invalid_priavte_did() {
@@ -52,9 +52,9 @@ fn test_add_invalid_priavte_did() {
 		));
 	})
 }
-// END ADD_IVALID_PRIVATE_DID TESTING
+// END ADD_INVALID_PRIVATE_DID TESTING
 
-// START ADD_IVALID_PUBLIC_DID TESTING
+// START ADD_INVALID_PUBLIC_DID TESTING
 #[test]
 #[should_panic]
 fn test_add_invalid_public_did() {
@@ -76,9 +76,9 @@ fn test_add_invalid_public_did() {
 	})
 }
 
-// END ADD_IVALID_PUBLIC_DID TESTING
+// END ADD_INVALID_PUBLIC_DID TESTING
 
-// START NON_VALIDATOR_ADD_DID TESTING
+// START NON_VALIDATOR_ADDS_DID TESTING
 #[test]
 #[should_panic]
 fn test_non_validator_adds_did() {
@@ -95,7 +95,7 @@ fn test_non_validator_adds_did() {
 		));
 	})
 }
-// END NON_VALIDATOR_ADD_DID TESTING
+// END NON_VALIDATOR_ADDS_DID TESTING
 
 // START ADD_PRIVATE_DID TESTING
 #[test]
@@ -122,16 +122,6 @@ fn test_add_private_did() {
 
 		let (did_doc, _block_number) = Did::get_did_details(identifier.clone()).unwrap();
 		match did_doc {
-			types::DIDType::Public(public_did) => {
-				assert_eq!(public_did.identifier, identifier);
-				assert_eq!(public_did.public_key, public_key);
-				assert_eq!(public_did.metadata, metadata);
-				let did_lookup = RLookup::<Test>::get(Did::get_accountid_from_pubkey(&public_key));
-				match did_lookup {
-					Some(did) => assert_eq!(did, identifier.clone()),
-					None => assert!(false),
-				}
-			},
 			types::DIDType::Private(private_did) => {
 				assert_eq!(private_did.identifier, identifier);
 				assert_eq!(private_did.public_key, public_key);
@@ -142,6 +132,8 @@ fn test_add_private_did() {
 					None => assert!(false),
 				}
 			},
+
+			_ => {}
 		}
 	})
 }
@@ -185,16 +177,8 @@ fn test_add_public_did() {
 					None => assert!(false),
 				}
 			},
-			types::DIDType::Private(private_did) => {
-				assert_eq!(private_did.identifier, identifier);
-				assert_eq!(private_did.public_key, public_key);
-				assert_eq!(private_did.metadata, metadata);
-				let did_lookup = RLookup::<Test>::get(Did::get_accountid_from_pubkey(&public_key));
-				match did_lookup {
-					Some(did) => assert_eq!(did, identifier.clone()),
-					None => assert!(false),
-				}
-			},
+
+			_ => {}
 		}
 	})
 }
@@ -220,7 +204,7 @@ fn test_add_existing_did() {
 }
 //END ADD_DID TESTING
 
-//START ADD_PUBLIC_KEY TESTING
+//START ADD_EXISTING_PUBLIC_KEY TESTING
 #[test]
 #[should_panic]
 fn test_add_existing_pubkey() {
@@ -248,7 +232,7 @@ fn test_add_existing_pubkey() {
 		));
 	})
 }
-//END ADD_PUBLIC_KEY TESTING
+//END ADD_EXISTING_PUBLIC_KEY TESTING
 
 //START NON_EXITSING_DID_REMOVE TESTING
 #[test]
