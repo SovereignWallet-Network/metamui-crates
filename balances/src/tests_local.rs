@@ -33,19 +33,6 @@ use sp_runtime::{testing::Header, traits::IdentityLookup};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-pub type AccountId = u64;
-pub struct DidResolution;
-impl DidResolve<AccountId> for DidResolution {
-	/// return if an accountId is mapped to a DID
-  fn did_exists(x: &AccountId) -> bool {
-		true
-	}
-  /// convert accountId to DID
-  fn get_account_id(k: &AccountId) -> Option<Did> {
-		Some(*b"did:ssid:swn/0/0/0/0/0/0/0/0/0/0")
-	}
-}
-
 frame_support::construct_runtime!(
 	pub enum Test where
 		Block = Block,

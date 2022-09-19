@@ -15,7 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Macro for creating the tests for the module.A regular 
+//! Macro for creating the tests for the module.
 
 #![cfg(test)]
 

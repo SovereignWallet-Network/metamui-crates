@@ -154,16 +154,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
-// mod tests;
+mod tests;
 mod benchmarking;
-// mod tests_composite;
-// mod tests_local;
+mod tests_composite;
+mod tests_local;
+#[cfg(test)]
+mod tests_reentrancy;
 pub mod weights;
 
 pub use self::imbalances::{NegativeImbalance, PositiveImbalance};
 use codec::{Codec, Decode, Encode, MaxEncodedLen};
-use metamui_primitives::{Did, traits::{DidResolve, MultiAddress}};
-
 #[cfg(feature = "std")]
 use frame_support::traits::GenesisBuild;
 use frame_support::{
@@ -189,55 +189,8 @@ use sp_runtime::{
 };
 use sp_std::{cmp, fmt::Debug, mem, ops::BitOr, prelude::*, result};
 pub use weights::WeightInfo;
+
 pub use pallet::*;
-
-/// Type for leaving a note when sending a transaction.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Debug, TypeInfo)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Memo(Vec<u8>);
-
-/// The max length of Memo allowed
-pub const MAXIMUM_MEMO_LEN: u32 = 128;
-
-impl From<Vec<u8>> for Memo {
-  fn from(raw: Vec<u8>) -> Self {
-      Self(raw)
-  }
-}
-
-impl From<&[u8]> for Memo {
-  fn from(raw: &[u8]) -> Self {
-      Self(raw.to_vec())
-  }
-}
-
-impl AsRef<[u8]> for Memo {
-  fn as_ref(&self) -> &[u8] {
-      self.0.as_slice()
-  }
-}
-
-#[cfg(feature = "std")]
-impl std::fmt::Display for Memo {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      write!(f, "{}", String::from_utf8_lossy(&self.0))
-  }
-}
-
-#[cfg(not(feature = "std"))]
-impl core::fmt::Display for Memo {
-  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-      write!(f, "{:?}", self.0)
-  }
-}
-
-impl Memo {
-  /// Add custom checks if required.
-  /// Now adding only Memo length check to avoid extreme high length memo due to fee less transaction
-  pub fn is_valid(&self) -> bool {
-      return !(self.0.len() > MAXIMUM_MEMO_LEN as usize);
-  }
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -272,8 +225,6 @@ pub mod pallet {
 		/// The means of storing the balances of an account.
 		type AccountStore: StoredMap<Self::AccountId, AccountData<Self::Balance>>;
 
-		type DidResolution: DidResolve<Self::AccountId>;
-
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
@@ -288,9 +239,6 @@ pub mod pallet {
 
 		/// The id type for named reserves.
 		type ReserveIdentifier: Parameter + Member + MaxEncodedLen + Ord + Copy;
-
-		/// Origin from which approvals must come.
-		type ApproveOrigin: EnsureOrigin<Self::Origin>;
 	}
 
 	#[pallet::pallet]
@@ -341,47 +289,6 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-    /// Transfer some liquid free balance to another account with Memo.
-    ///
-    /// `transfer` will set the `FreeBalance` of the sender and receiver.
-    /// It will decrease the total issuance of the system by the `TransferFee`.
-    /// If the sender's account is below the existential deposit as a result
-    /// of the transfer, the account will be reaped.
-    ///
-    /// The dispatch origin for this call must be `Signed` by the transactor.
-    ///
-    /// # <weight>
-    /// - Dependent on arguments but not critical, given proper implementations for
-    ///   input config types. See related functions below.
-    /// - It contains a limited number of reads and writes internally and no complex computation.
-    ///
-    /// Related functions:
-    ///
-    ///   - `ensure_can_withdraw` is always called internally but has a bounded complexity.
-    ///   - Transferring balances to accounts that did not exist before will cause
-    ///      `T::OnNewAccount::on_new_account` to be called.
-    ///   - Removing enough funds from an account will trigger `T::DustRemoval::on_unbalanced`.
-    ///   - `transfer_keep_alive` works the same way as `transfer`, but has an additional
-    ///     check that the transfer will not kill the origin account.
-    /// ---------------------------------
-    /// - Base Weight: 73.64 µs, worst case scenario (account created, account removed)
-    /// - DB Weight: 1 Read and 1 Write to destination account
-    /// - Origin account is already in memory, so no DB operations for them.
-    /// # </weight>
-    #[pallet::weight(T::WeightInfo::transfer())]
-    pub fn transfer_with_memo(
-      origin: OriginFor<T>,
-      dest: <T::Lookup as StaticLookup>::Source,
-      #[pallet::compact] value: T::Balance,
-      memo: Memo,
-    	) -> DispatchResultWithPostInfo {
-      let transactor = ensure_signed(origin)?;
-      let dest = T::Lookup::lookup(dest)?;
-      ensure!(memo.is_valid(), Error::<T, I>::InvalidMemoLength);
-      <Self as Currency<_>>::transfer(&transactor, &dest, value, ExistenceRequirement::AllowDeath)?;
-	    Ok(().into())
-    }		
-
 		/// Set the balances of a given account.
 		///
 		/// This will alter `FreeBalance` and `ReservedBalance` in storage. it will
@@ -402,7 +309,6 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
-			Self::ensure_did_exists(&who)?;
 			let existential_deposit = T::ExistentialDeposit::get();
 
 			let wipeout = new_free + new_reserved < existential_deposit;
@@ -524,26 +430,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
-			Self::ensure_did_exists(&who)?;
 			let _leftover = <Self as ReservableCurrency<_>>::unreserve(&who, amount);
 			Ok(())
-		}
-
-		#[pallet::weight(T::WeightInfo::force_unreserve())]
-  	pub fn burn_balance(
-			origin: OriginFor<T>,
-			dest: <T::Lookup as StaticLookup>::Source,
-			#[pallet::compact] amount: T::Balance
-		) -> DispatchResultWithPostInfo {
-			T::ApproveOrigin::ensure_origin(origin)?;
-			let dest = T::Lookup::lookup(dest)?;
-			Self::ensure_did_exists(&dest)?;
-			ensure!(<Self as Currency<_>>::can_slash(&dest, amount), Error::<T, I>::BalanceTooLow);
-			let _ = <Self as Currency<_>>::slash(&dest, amount);
-			let _ = <Self as Currency<_>>::burn(amount);
-			let dest_did = T::DidResolution::get_did(&dest).unwrap();
-			Self::deposit_event(Event::BalanceBurned(dest_did, amount));
-			Ok(().into())
 		}
 	}
 
@@ -555,16 +443,14 @@ pub mod pallet {
 		/// An account was removed whose balance was non-zero but below ExistentialDeposit,
 		/// resulting in an outright loss.
 		DustLost { account: T::AccountId, amount: T::Balance },
-		/// Transfer succeeded. \[from, to, value\]
-		Transfer(Did, Did, T::Balance),
+		/// Transfer succeeded.
+		Transfer { from: T::AccountId, to: T::AccountId, amount: T::Balance },
 		/// A balance was set by root.
 		BalanceSet { who: T::AccountId, free: T::Balance, reserved: T::Balance },
 		/// Some balance was reserved (moved from free to reserved).
 		Reserved { who: T::AccountId, amount: T::Balance },
 		/// Some balance was unreserved (moved from reserved to free).
 		Unreserved { who: T::AccountId, amount: T::Balance },
-        /// Some balance was burned from given account, total Issuance reduced
-		BalanceBurned(Did, T::Balance),
 		/// Some balance was moved from the reserve of the first account to the second account.
 		/// Final argument indicates the destination balance type.
 		ReserveRepatriated {
@@ -589,30 +475,23 @@ pub mod pallet {
 		LiquidityRestrictions,
 		/// Balance too low to send value
 		InsufficientBalance,
+		/// Value too low to create account due to existential deposit
+		ExistentialDeposit,
 		/// Transfer/payment would kill account
 		KeepAlive,
 		/// A vesting schedule already exists for this account
 		ExistingVestingSchedule,
-        /// recipent account must have registered DID
-		RecipentDIDNotRegistered,
 		/// Beneficiary account must pre-exist
 		DeadAccount,
 		/// Number of named reserves exceed MaxReserves
 		TooManyReserves,
-    /// Got an overflow after adding
-    Overflow,
-    /// Value too low to create account due to existential deposit
-    ExistentialDeposit,
-    // Memo length too long.
-    InvalidMemoLength,
-    /// Balance low
-    BalanceTooLow
 	}
 
 	/// The total units issued in the system.
 	#[pallet::storage]
 	#[pallet::getter(fn total_issuance)]
 	pub type TotalIssuance<T: Config<I>, I: 'static = ()> = StorageValue<_, T::Balance, ValueQuery>;
+
 	/// The Balances pallet example of storing the balance of an account.
 	///
 	/// # Example
@@ -1173,12 +1052,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		});
 		Ok(actual)
 	}
-
-	/// Check if the AccountId is mapped to some Did in our system
-	fn ensure_did_exists(fetched_id: &T::AccountId) -> DispatchResult{
-		ensure!(T::DidResolution::did_exists(MultiAddress::Id(fetched_id.clone())), Error::<T, I>::RecipentDIDNotRegistered);
-		Ok(())
-	}
 }
 
 impl<T: Config<I>, I: 'static> fungible::Inspect<T::AccountId> for Pallet<T, I> {
@@ -1304,7 +1177,6 @@ impl<T: Config<I>, I: 'static> fungible::InspectHold<T::AccountId> for Pallet<T,
 		a.free >= required_free
 	}
 }
-
 impl<T: Config<I>, I: 'static> fungible::MutateHold<T::AccountId> for Pallet<T, I> {
 	fn hold(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		if amount.is_zero() {
@@ -1317,7 +1189,6 @@ impl<T: Config<I>, I: 'static> fungible::MutateHold<T::AccountId> for Pallet<T, 
 		})?;
 		Ok(())
 	}
-
 	fn release(
 		who: &T::AccountId,
 		amount: Self::Balance,
@@ -1337,7 +1208,6 @@ impl<T: Config<I>, I: 'static> fungible::MutateHold<T::AccountId> for Pallet<T, 
 			Ok(actual)
 		})
 	}
-
 	fn transfer_held(
 		source: &T::AccountId,
 		dest: &T::AccountId,
@@ -1401,7 +1271,6 @@ mod imbalances {
 		fn zero() -> Self {
 			Self(Zero::zero())
 		}
-
 		fn drop_zero(self) -> result::Result<(), Self> {
 			if self.0.is_zero() {
 				Ok(())
@@ -1409,7 +1278,6 @@ mod imbalances {
 				Err(self)
 			}
 		}
-
 		fn split(self, amount: T::Balance) -> (Self, Self) {
 			let first = self.0.min(amount);
 			let second = self.0 - first;
@@ -1417,19 +1285,16 @@ mod imbalances {
 			mem::forget(self);
 			(Self(first), Self(second))
 		}
-
 		fn merge(mut self, other: Self) -> Self {
 			self.0 = self.0.saturating_add(other.0);
 			mem::forget(other);
 
 			self
 		}
-
 		fn subsume(&mut self, other: Self) {
 			self.0 = self.0.saturating_add(other.0);
 			mem::forget(other);
 		}
-
 		fn offset(self, other: Self::Opposite) -> SameOrOther<Self, Self::Opposite> {
 			let (a, b) = (self.0, other.0);
 			mem::forget((self, other));
@@ -1442,7 +1307,6 @@ mod imbalances {
 				SameOrOther::None
 			}
 		}
-
 		fn peek(&self) -> T::Balance {
 			self.0
 		}
@@ -1466,7 +1330,6 @@ mod imbalances {
 		fn zero() -> Self {
 			Self(Zero::zero())
 		}
-
 		fn drop_zero(self) -> result::Result<(), Self> {
 			if self.0.is_zero() {
 				Ok(())
@@ -1474,7 +1337,6 @@ mod imbalances {
 				Err(self)
 			}
 		}
-
 		fn split(self, amount: T::Balance) -> (Self, Self) {
 			let first = self.0.min(amount);
 			let second = self.0 - first;
@@ -1482,19 +1344,16 @@ mod imbalances {
 			mem::forget(self);
 			(Self(first), Self(second))
 		}
-
 		fn merge(mut self, other: Self) -> Self {
 			self.0 = self.0.saturating_add(other.0);
 			mem::forget(other);
 
 			self
 		}
-
 		fn subsume(&mut self, other: Self) {
 			self.0 = self.0.saturating_add(other.0);
 			mem::forget(other);
 		}
-
 		fn offset(self, other: Self::Opposite) -> SameOrOther<Self, Self::Opposite> {
 			let (a, b) = (self.0, other.0);
 			mem::forget((self, other));
@@ -1507,7 +1366,6 @@ mod imbalances {
 				SameOrOther::None
 			}
 		}
-
 		fn peek(&self) -> T::Balance {
 			self.0
 		}
@@ -1625,9 +1483,6 @@ where
 			return Ok(())
 		}
 
-		// ensure that the recipent accountId has been mapped to a DID, else return
-		Self::ensure_did_exists(dest)?;
-
 		Self::try_mutate_account_with_dust(
 			dest,
 			|to_account, _| -> Result<DustCleaner<T, I>, DispatchError> {
@@ -1672,10 +1527,12 @@ where
 			},
 		)?;
 
-    // Emit transfer event - fetch DID of account to emit event correctly
-    let transactor_did = T::DidResolution::get_did(&transactor).unwrap();
-    let dest_did = T::DidResolution::get_did(&dest).unwrap();
-    Self::deposit_event(Event::Transfer(transactor_did, dest_did, value));
+		// Emit transfer event.
+		Self::deposit_event(Event::Transfer {
+			from: transactor.clone(),
+			to: dest.clone(),
+			amount: value,
+		});
 
 		Ok(())
 	}
@@ -1749,7 +1606,7 @@ where
 			}
 		}
 
-		// Should never get here. But we'll be defensive anyway. 
+		// Should never get here. But we'll be defensive anyway.
 		(Self::NegativeImbalance::zero(), value)
 	}
 
