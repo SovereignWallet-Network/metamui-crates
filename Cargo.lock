@@ -1384,6 +1384,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-node-authorization"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 4.0.0",
+]
+
+[[package]]
 name = "pallet-session"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#45a76f7ea1bf7bbdc9a9b3eb599bb30619849560"

@@ -2,6 +2,7 @@
 members = [
     "metamui-primitives",
     "node-authorities",
+    "node-authorization",
     "validator-set",
     "collective",
     "balances",
