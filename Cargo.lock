@@ -1390,6 +1390,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "metamui-primitives",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

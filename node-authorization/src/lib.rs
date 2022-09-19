@@ -48,12 +48,24 @@ pub use pallet::*;
 use sp_core::OpaquePeerId as PeerId;
 use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
 pub use weights::WeightInfo;
+use frame_support::{
+	ensure,
+	traits::{
+		Currency, Get, LockIdentifier, LockableCurrency,
+		WithdrawReasons,
+	},
+};
+use frame_support::pallet_prelude::*;
+use frame_system::pallet_prelude::*;
+use metamui_primitives::{Did, traits::{DidResolve, MultiAddress}};
+
+type BalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+const STAKING_ID: LockIdentifier = *b"staking ";
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -65,6 +77,9 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Currency
+		type Currency: Currency<Self::AccountId> + LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 
 		/// The maximum number of well known nodes that are allowed to set
 		#[pallet::constant]
@@ -86,6 +101,9 @@ pub mod pallet {
 		/// The origin which can reset the well known nodes.
 		type ResetOrigin: EnsureOrigin<Self::Origin>;
 
+		/// Resolve Did from Account Id
+		type DidResolution: DidResolve<Self::AccountId>;
+
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 	}
@@ -98,7 +116,12 @@ pub mod pallet {
 	/// A map that maintains the ownership of each node.
 	#[pallet::storage]
 	#[pallet::getter(fn owners)]
-	pub type Owners<T: Config> = StorageMap<_, Blake2_128Concat, PeerId, T::AccountId>;
+	pub type Owners<T: Config> = StorageMap<_, Blake2_128Concat, PeerId, Did>;
+
+	/// A map that maintains the ownership of each node.
+	#[pallet::storage]
+	#[pallet::getter(fn peer_ids)]
+	pub type PeerIds<T: Config> = StorageMap<_, Blake2_128Concat, Did, Vec<PeerId>>;
 
 	/// The additional adapative connections of each node.
 	#[pallet::storage]
@@ -108,13 +131,14 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub nodes: Vec<(PeerId, T::AccountId)>,
+		pub nodes: Vec<(PeerId, Did)>,
+		pub phantom: PhantomData<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { nodes: Vec::new() }
+			Self { nodes: Vec::new(), phantom: Default::default() }
 		}
 	}
 
@@ -129,20 +153,20 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The given well known node was added.
-		NodeAdded { peer_id: PeerId, who: T::AccountId },
+		NodeAdded { peer_id: PeerId, who: Did },
 		/// The given well known node was removed.
 		NodeRemoved { peer_id: PeerId },
 		/// The given well known node was swapped; first item was removed,
 		/// the latter was added.
 		NodeSwapped { removed: PeerId, added: PeerId },
 		/// The given well known nodes were reset.
-		NodesReset { nodes: Vec<(PeerId, T::AccountId)> },
+		NodesReset { nodes: Vec<(PeerId, Did)> },
 		/// The given node was claimed by a user.
-		NodeClaimed { peer_id: PeerId, who: T::AccountId },
+		NodeClaimed { peer_id: PeerId, who: Did },
 		/// The given claim was removed by its owner.
-		ClaimRemoved { peer_id: PeerId, who: T::AccountId },
+		ClaimRemoved { peer_id: PeerId, who: Did },
 		/// The node was transferred to another account.
-		NodeTransferred { peer_id: PeerId, target: T::AccountId },
+		NodeTransferred { peer_id: PeerId, target: Did },
 		/// The allowed connections were added to a node.
 		ConnectionsAdded { peer_id: PeerId, allowed_connections: Vec<PeerId> },
 		/// The allowed connections were removed from a node.
@@ -167,6 +191,12 @@ pub mod pallet {
 		NotOwner,
 		/// No permisson to perform specific operation.
 		PermissionDenied,
+		/// The given DID does not exist on chain
+		DIDDoesNotExist,
+		/// Not enough Balance
+		InsufficientBalance,
+		/// Multiple well known node not allowed for a DID
+		NotPermitted,
 	}
 
 	#[pallet::hooks]
@@ -211,14 +241,17 @@ pub mod pallet {
 		pub fn add_well_known_node(
 			origin: OriginFor<T>,
 			node: PeerId,
-			owner: T::AccountId,
+			owner: Did,
+			staking_amount: BalanceOf<T>,
 		) -> DispatchResult {
 			T::AddOrigin::ensure_origin(origin)?;
-			ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
 
 			let mut nodes = WellKnownNodes::<T>::get();
-			ensure!(nodes.len() < T::MaxWellKnownNodes::get() as usize, Error::<T>::TooManyNodes);
-			ensure!(!nodes.contains(&node), Error::<T>::AlreadyJoined);
+			Self::can_add_well_known_node(&nodes, &node, owner, staking_amount)?;
+
+			// Reserve amount from the owner
+			let owner_acc = T::DidResolution::get_account_id(&owner).unwrap();
+			T::Currency::set_lock(STAKING_ID, &owner_acc, staking_amount, WithdrawReasons::RESERVE);
 
 			nodes.insert(node.clone());
 
@@ -242,12 +275,26 @@ pub mod pallet {
 
 			let mut nodes = WellKnownNodes::<T>::get();
 			ensure!(nodes.contains(&node), Error::<T>::NotExist);
+			let owner = Owners::<T>::get(&node).unwrap_or_default();
+
+			ensure!(T::DidResolution::did_exists(MultiAddress::Did(owner.clone())), Error::<T>::DIDDoesNotExist);
 
 			nodes.remove(&node);
+            
+			Owners::<T>::remove(&node);
+			let mut peer_ids = PeerIds::<T>::get(owner).unwrap_or_default();
+			peer_ids.retain(|p| p != &node);
+
+			PeerIds::<T>::insert(owner, peer_ids);
 
 			WellKnownNodes::<T>::put(&nodes);
 			<Owners<T>>::remove(&node);
 			AdditionalConnections::<T>::remove(&node);
+
+			let owner_acc = T::DidResolution::get_account_id(&owner).unwrap();
+
+			// Unreserve amount from the owner
+			T::Currency::remove_lock(STAKING_ID, &owner_acc);
 
 			Self::deposit_event(Event::NodeRemoved { peer_id: node });
 			Ok(())
@@ -281,6 +328,14 @@ pub mod pallet {
 			nodes.remove(&remove);
 			nodes.insert(add.clone());
 
+			let owner = Owners::<T>::get(&remove).ok_or(Error::<T>::NotClaimed)?;
+
+			let mut peer_ids = PeerIds::<T>::get(owner).unwrap();
+			peer_ids.retain(|p| p != &remove);
+			peer_ids.push(add.clone());
+
+			PeerIds::<T>::insert(owner, peer_ids);
+
 			WellKnownNodes::<T>::put(&nodes);
 			Owners::<T>::swap(&remove, &add);
 			AdditionalConnections::<T>::swap(&remove, &add);
@@ -296,19 +351,19 @@ pub mod pallet {
 		/// May only be called from `T::ResetOrigin`.
 		///
 		/// - `nodes`: the new nodes for the allow list.
-		#[pallet::weight((T::WeightInfo::reset_well_known_nodes(), DispatchClass::Operational))]
-		pub fn reset_well_known_nodes(
-			origin: OriginFor<T>,
-			nodes: Vec<(PeerId, T::AccountId)>,
-		) -> DispatchResult {
-			T::ResetOrigin::ensure_origin(origin)?;
-			ensure!(nodes.len() < T::MaxWellKnownNodes::get() as usize, Error::<T>::TooManyNodes);
+		// #[pallet::weight((T::WeightInfo::reset_well_known_nodes(), DispatchClass::Operational))]
+		// pub fn reset_well_known_nodes(
+		// 	origin: OriginFor<T>,
+		// 	nodes: Vec<(PeerId, Did)>,
+		// ) -> DispatchResult {
+		// 	T::ResetOrigin::ensure_origin(origin)?;
+		// 	ensure!(nodes.len() < T::MaxWellKnownNodes::get() as usize, Error::<T>::TooManyNodes);
 
-			Self::initialize_nodes(&nodes);
+		// 	Self::initialize_nodes(&nodes);
 
-			Self::deposit_event(Event::NodesReset { nodes });
-			Ok(())
-		}
+		// 	Self::deposit_event(Event::NodesReset { nodes });
+		// 	Ok(())
+		// }
 
 		/// A given node can be claimed by anyone. The owner should be the first to know its
 		/// PeerId, so claim it right away!
@@ -317,12 +372,19 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::claim_node())]
 		pub fn claim_node(origin: OriginFor<T>, node: PeerId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+			ensure!(T::DidResolution::did_exists(MultiAddress::Id(sender.clone())), Error::<T>::DIDDoesNotExist);
+
+			let sender_did = T::DidResolution::get_did(&sender).unwrap();
 
 			ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
 			ensure!(!Owners::<T>::contains_key(&node), Error::<T>::AlreadyClaimed);
 
-			Owners::<T>::insert(&node, &sender);
-			Self::deposit_event(Event::NodeClaimed { peer_id: node, who: sender });
+			let mut peer_ids = PeerIds::<T>::get(sender_did).unwrap();
+			peer_ids.push(node.clone());
+			PeerIds::<T>::insert(sender_did, peer_ids);
+
+			Owners::<T>::insert(&node, &sender_did);
+			Self::deposit_event(Event::NodeClaimed { peer_id: node, who: sender_did });
 			Ok(())
 		}
 
@@ -334,16 +396,23 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::remove_claim())]
 		pub fn remove_claim(origin: OriginFor<T>, node: PeerId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+			ensure!(T::DidResolution::did_exists(MultiAddress::Id(sender.clone())), Error::<T>::DIDDoesNotExist);
+
+			let sender_did = T::DidResolution::get_did(&sender).unwrap();
 
 			ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
 			let owner = Owners::<T>::get(&node).ok_or(Error::<T>::NotClaimed)?;
-			ensure!(owner == sender, Error::<T>::NotOwner);
+			ensure!(owner == sender_did, Error::<T>::NotOwner);
 			ensure!(!WellKnownNodes::<T>::get().contains(&node), Error::<T>::PermissionDenied);
+			
+			let mut peer_ids = PeerIds::<T>::get(sender_did).unwrap();
+			peer_ids.retain(|p| p != &node);
+			PeerIds::<T>::insert(sender_did, peer_ids);
 
 			Owners::<T>::remove(&node);
 			AdditionalConnections::<T>::remove(&node);
 
-			Self::deposit_event(Event::ClaimRemoved { peer_id: node, who: sender });
+			Self::deposit_event(Event::ClaimRemoved { peer_id: node, who: sender_did });
 			Ok(())
 		}
 
@@ -351,23 +420,26 @@ pub mod pallet {
 		///
 		/// - `node`: identifier of the node.
 		/// - `owner`: new owner of the node.
-		#[pallet::weight(T::WeightInfo::transfer_node())]
-		pub fn transfer_node(
-			origin: OriginFor<T>,
-			node: PeerId,
-			owner: T::AccountId,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+		// #[pallet::weight(T::WeightInfo::transfer_node())]
+		// pub fn transfer_node(
+		// 	origin: OriginFor<T>,
+		// 	node: PeerId,
+		// 	owner: Did,
+		// ) -> DispatchResult {
+		// 	let sender = ensure_signed(origin)?;
+		// 	ensure!(T::DidResolution::did_exists(MultiAddress::Id(sender.clone())), Error::<T>::DIDDoesNotExist);
 
-			ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
-			let pre_owner = Owners::<T>::get(&node).ok_or(Error::<T>::NotClaimed)?;
-			ensure!(pre_owner == sender, Error::<T>::NotOwner);
+		// 	let sender_did = T::DidResolution::get_did(&sender).unwrap();
 
-			Owners::<T>::insert(&node, &owner);
+		// 	ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
+		// 	let pre_owner = Owners::<T>::get(&node).ok_or(Error::<T>::NotClaimed)?;
+		// 	ensure!(pre_owner == sender_did, Error::<T>::NotOwner);
 
-			Self::deposit_event(Event::NodeTransferred { peer_id: node, target: owner });
-			Ok(())
-		}
+		// 	Owners::<T>::insert(&node, &owner);
+
+		// 	Self::deposit_event(Event::NodeTransferred { peer_id: node, target: owner });
+		// 	Ok(())
+		// }
 
 		/// Add additional connections to a given node.
 		///
@@ -380,10 +452,13 @@ pub mod pallet {
 			connections: Vec<PeerId>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+			ensure!(T::DidResolution::did_exists(MultiAddress::Id(sender.clone())), Error::<T>::DIDDoesNotExist);
+
+			let sender_did = T::DidResolution::get_did(&sender).unwrap();
 
 			ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
 			let owner = Owners::<T>::get(&node).ok_or(Error::<T>::NotClaimed)?;
-			ensure!(owner == sender, Error::<T>::NotOwner);
+			ensure!(owner == sender_did, Error::<T>::NotOwner);
 
 			let mut nodes = AdditionalConnections::<T>::get(&node);
 
@@ -414,10 +489,13 @@ pub mod pallet {
 			connections: Vec<PeerId>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+			ensure!(T::DidResolution::did_exists(MultiAddress::Id(sender.clone())), Error::<T>::DIDDoesNotExist);
+
+			let sender_did = T::DidResolution::get_did(&sender).unwrap();
 
 			ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
 			let owner = Owners::<T>::get(&node).ok_or(Error::<T>::NotClaimed)?;
-			ensure!(owner == sender, Error::<T>::NotOwner);
+			ensure!(owner == sender_did, Error::<T>::NotOwner);
 
 			let mut nodes = AdditionalConnections::<T>::get(&node);
 
@@ -437,12 +515,15 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-	fn initialize_nodes(nodes: &Vec<(PeerId, T::AccountId)>) {
+	fn initialize_nodes(nodes: &Vec<(PeerId, Did)>) {
 		let peer_ids = nodes.iter().map(|item| item.0.clone()).collect::<BTreeSet<PeerId>>();
 		WellKnownNodes::<T>::put(&peer_ids);
 
 		for (node, who) in nodes.iter() {
 			Owners::<T>::insert(node, who);
+			let mut peer_ids = PeerIds::<T>::get(who).unwrap();
+			peer_ids.push(node.clone());
+			PeerIds::<T>::insert(who, peer_ids);
 		}
 	}
 
@@ -456,5 +537,23 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Vec::from_iter(nodes)
+	}
+
+	fn can_add_well_known_node(nodes: &BTreeSet<PeerId>, node: &PeerId, owner: Did, staking_amount: BalanceOf<T>) -> DispatchResult {
+		ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
+		ensure!(T::DidResolution::did_exists(MultiAddress::Did(owner)), Error::<T>::DIDDoesNotExist);
+		ensure!(nodes.len() < T::MaxWellKnownNodes::get() as usize, Error::<T>::TooManyNodes);
+		ensure!(!nodes.contains(&node), Error::<T>::AlreadyJoined);
+		ensure!(Owners::<T>::contains_key(&node), Error::<T>::NotClaimed);
+		ensure!(Owners::<T>::get(&node) == Some(owner), Error::<T>::NotOwner);
+
+		let owner_acc = T::DidResolution::get_account_id(&owner).unwrap();
+		ensure!(T::Currency::free_balance(&owner_acc) >= staking_amount, Error::<T>::InsufficientBalance);
+
+		let peer_ids = PeerIds::<T>::get(owner).unwrap_or_default();
+		let has_well_known_node = peer_ids.into_iter().any(|peer_id| nodes.contains(&peer_id));
+
+		ensure!(!has_well_known_node, Error::<T>::NotPermitted);
+		Ok(())
 	}
 }
