@@ -43,60 +43,28 @@ mod mock;
 mod tests;
 
 pub mod weights;
+use weights::WeightInfo;
 
 pub use pallet::*;
 use sp_core::OpaquePeerId as PeerId;
 use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
-use metamui_primitives::{Did, traits::DidResolve};
-use balances;
-pub type NegativeImbalanceOf<T> = <balances::Module<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
+use metamui_primitives::{Did, traits::{DidResolve, MultiAddress}};
+use pallet_balances;
+use frame_support::{
+	debug, ensure, dispatch,
+	traits::{
+			EnsureOrigin, Get, LockableCurrency as PalletLockableCurrency, 
+			WithdrawReasons, LockIdentifier, Currency, OnUnbalanced
+	},
+	// weights::{DispatchClass, Weight},
+};
+const STAKING_ID: LockIdentifier = *b"staking ";
+// mod migration;
+// mod structs;
+// use structs::*;
+use frame_system::ensure_signed;
 
-pub trait WeightInfo {
-	fn add_well_known_node() -> Weight;
-	fn remove_well_known_node() -> Weight;
-	fn swap_well_known_node() -> Weight;
-	fn reset_well_known_nodes() -> Weight;
-	fn claim_node() -> Weight;
-	fn remove_claim() -> Weight;
-	fn transfer_node() -> Weight;
-	fn add_connections() -> Weight;
-	fn remove_connections() -> Weight;
-	fn slash_validator() -> Weight;
-}
-
-impl WeightInfo for () {
-	fn add_well_known_node() -> Weight {
-		50_000_000
-	}
-	fn remove_well_known_node() -> Weight {
-		50_000_000
-	}
-	fn swap_well_known_node() -> Weight {
-		50_000_000
-	}
-	fn reset_well_known_nodes() -> Weight {
-		50_000_000
-	}
-	fn claim_node() -> Weight {
-		50_000_000
-	}
-	fn remove_claim() -> Weight {
-		50_000_000
-	}
-	fn transfer_node() -> Weight {
-		50_000_000
-	}
-	fn add_connections() -> Weight {
-		50_000_000
-	}
-	fn remove_connections() -> Weight {
-		50_000_000
-	}
-	fn slash_validator() -> Weight {
-		50_000_000
-	}
-}
-
+pub type NegativeImbalanceOf<T> = <pallet_balances::Pallet<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -110,7 +78,7 @@ pub mod pallet {
 
 	/// The module configuration trait
 	#[pallet::config]
-	pub trait Config: frame_system::Config + balances::Config {
+	pub trait Config: frame_system::Config + pallet_balances::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -164,15 +132,21 @@ pub mod pallet {
 	pub type AdditionalConnections<T> =
 		StorageMap<_, Blake2_128Concat, PeerId, BTreeSet<PeerId>, ValueQuery>;
 
+	// #[pallet::storage]
+	// PalletVersion<T>: StorageVersion = StorageVersion::V1_0_0;
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub nodes: Vec<(PeerId, Did)>,
+		pub phantom: PhantomData<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { nodes: Vec::new() }
+			Self { 
+				nodes: Vec::new(),
+				phantom: Default::default(),
+			}
 		}
 	}
 
@@ -206,7 +180,7 @@ pub mod pallet {
 		/// The allowed connections were removed from a node.
 		ConnectionsRemoved { peer_id: PeerId, allowed_connections: Vec<PeerId> },
 		/// The validator was slashed.
-		ValidatorSlashed{ Did };
+		ValidatorSlashed{ did: Did }
 	}
 
 	#[pallet::error]
@@ -237,33 +211,31 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		/// Set reserved node every block. It may not be enabled depends on the offchain
-		/// worker settings when starting the node.
-		fn offchain_worker(now: T::BlockNumber) {
-			let network_state = sp_io::offchain::network_state();
-			match network_state {
-				Err(_) => log::error!(
-					target: "runtime::node-authorization",
-					"Error: failed to get network state of node at {:?}",
-					now,
-				),
-				Ok(state) => {
-					let encoded_peer = state.peer_id.0;
-					match Decode::decode(&mut &encoded_peer[..]) {
-						Err(_) => log::error!(
-							target: "runtime::node-authorization",
-							"Error: failed to decode PeerId at {:?}",
-							now,
-						),
-						Ok(node) => sp_io::offchain::set_authorized_nodes(
-							Self::get_authorized_nodes(&PeerId(node)),
-							true,
-						),
-					}
-				},
-			}
-		}
-	}
+
+    /// Set reserved node every block. It may not be enabled depends on the offchain
+    /// worker settings when starting the node.
+    fn offchain_worker(now: T::BlockNumber) {
+      let network_state = sp_io::offchain::network_state();
+      match network_state {
+        Err(_) => debug::error!("Error: failed to get network state of node at {:?}", now),
+        Ok(state) => {
+          let encoded_peer = state.peer_id.0;
+          match Decode::decode(&mut &encoded_peer[..]) {
+            Err(_) => debug::error!("Error: failed to decode PeerId at {:?}", now),
+            Ok(node) => sp_io::offchain::set_authorized_nodes(
+              Self::get_authorized_nodes(&PeerId(node)),
+              true
+            )
+          }
+        }
+      }
+	  }
+
+		// fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		// 	migration::migrate::<T>()
+		// }
+
+  }
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -289,7 +261,7 @@ pub mod pallet {
 
 			// Reserve amount from the owner
 			let owner_acc = T::DidResolution::get_account_id(&owner)?;
-			balances::Module::<T>::set_lock(STAKING_ID, &owner_acc, staking_amount, WithdrawReasons::RESERVE);
+			pallet_balances::Pallet::<T>::set_lock(STAKING_ID, &owner_acc, staking_amount, WithdrawReasons::RESERVE);
 
 			nodes.insert(node.clone());
 
@@ -327,8 +299,8 @@ pub mod pallet {
             
 			let owner_acc = T::DidResolution::get_account_id(&owner)?;
             // Unreserve amount from the owner
-            balances::Module::<T>::remove_lock(STAKING_ID, &owner_acc);
-            Self::deposit_event(Event::NodeRemoved(node));
+            pallet_balances::Pallet::<T>::remove_lock(STAKING_ID, &owner_acc);
+            Self::deposit_event(Event::NodeRemoved{ peer_id: node });
 			Ok(())
 		}
 
@@ -415,13 +387,13 @@ pub mod pallet {
       ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
       ensure!(!Owners::contains_key(&node),Error::<T>::AlreadyClaimed);
       
-			ensure!(T::DidResolution::did_exists(MultiAddress::Did(sender_did.clone())), Error::<T>::DIDNotRegistered)  
+			ensure!(T::DidResolution::did_exists(MultiAddress::Did(sender_did.clone())), Error::<T>::DIDNotRegistered);
 			let mut peer_ids = PeerIds::get(sender_did);
 
       peer_ids.push(node.clone());
       PeerIds::insert(sender_did, peer_ids);
       Owners::insert(&node, &sender_did);
-      Self::deposit_event(Event::NodeClaimed(node, sender_did));
+      Self::deposit_event(Event::NodeClaimed{ peer_id: node, who: sender_did });
 			Ok(())
 		}
 
@@ -445,7 +417,7 @@ pub mod pallet {
 			Owners::remove(&node);
 			AdditionalConnections::remove(&node);
 
-			Self::deposit_event(Event::ClaimRemoved(node, sender_did));
+			Self::deposit_event(Event::ClaimRemoved{ peer_id: node, who: sender_did });
 			Ok(())
 		}
 
@@ -498,7 +470,7 @@ pub mod pallet {
 
 			AdditionalConnections::insert(&node, nodes);
 
-			Self::deposit_event(Event::ConnectionsAdded(node, connections));
+			Self::deposit_event(Event::ConnectionsAdded{ peer_id: node, allowed_connections: connections });
 			Ok(())
 		}
 
@@ -526,7 +498,7 @@ pub mod pallet {
 
 			AdditionalConnections::insert(&node, nodes);
 
-			Self::deposit_event(Event::ConnectionsRemoved(node, connections));
+			Self::deposit_event(Event::ConnectionsRemoved{ peer_id: node, allowed_connections: connections });
 			Ok(())
 		}
 
@@ -534,44 +506,22 @@ pub mod pallet {
     ///
     /// - `did`: identifier of the validator.
     /// - `amount`: Amount of slashing.
-    #[weight = <T as Config>::WeightInfo::slash_validator()]
+    #[pallet::weight(T::WeightInfo::slash_validator())]
     pub fn slash_validator(
-      origin,
+      origin: OriginFor<T>,
       did: Did,
       amount: T::Balance
-    ){
+    ) -> DispatchResultWithPostInfo {
       T::SlashOrigin::ensure_origin(origin)?;
       let validator_acc = T::DidResolution::get_account_id(&did)?;
-      ensure!(balances::Module::<T>::can_slash(&validator_acc, amount), Error::<T>::InsufficientBalance);
+      ensure!(pallet_balances::Pallet::<T>::can_slash(&validator_acc, amount), Error::<T>::InsufficientBalance);
 
-      let neg_imbalance = balances::Module::<T>::slash(&validator_acc, amount);
+      let neg_imbalance = pallet_balances::Pallet::<T>::slash(&validator_acc, amount);
 			T::Slash::on_unbalanced(neg_imbalance.0);
-      Self::deposit_event(Event::ValidatorSlashed(did));
+      Self::deposit_event(Event::ValidatorSlashed { did });
+			Ok(().into())
     }
-
-    /// Set reserved node every block. It may not be enabled depends on the offchain
-    /// worker settings when starting the node.
-    fn offchain_worker(now: T::BlockNumber) {
-      let network_state = sp_io::offchain::network_state();
-      match network_state {
-        Err(_) => debug::error!("Error: failed to get network state of node at {:?}", now),
-        Ok(state) => {
-          let encoded_peer = state.peer_id.0;
-          match Decode::decode(&mut &encoded_peer[..]) {
-            Err(_) => debug::error!("Error: failed to decode PeerId at {:?}", now),
-            Ok(node) => sp_io::offchain::set_authorized_nodes(
-              Self::get_authorized_nodes(&PeerId(node)),
-              true
-            )
-          }
-        }
-      }
-    
-      fn on_runtime_upgrade() -> frame_support::weights::Weight {
-      	migration::migrate::<T>()
-      }
-    }
-	}
+  }
 }
 
 impl<T: Config> Pallet<T> {
@@ -612,7 +562,7 @@ impl<T: Config> Pallet<T> {
 		ensure!(Owners::get(&node) == owner, Error::<T>::NotOwner);
 		
 		let owner_acc = T::DidResolution::get_account_id(&owner)?;
-		ensure!(balances::Module::<T>::usable_balance(owner_acc.clone()) >= staking_amount, Error::<T>::InsufficientBalance);
+		ensure!(pallet_balances::Pallet::<T>::usable_balance(owner_acc.clone()) >= staking_amount, Error::<T>::InsufficientBalance);
 		
 		let peer_ids = PeerIds::get(owner);
 		let has_well_known_node = peer_ids.into_iter().any(|peer_id| nodes.contains(&peer_id));
