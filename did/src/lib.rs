@@ -16,7 +16,7 @@ mod benchmarking;
 pub mod types;
 
 mod impls;
-pub use crate::impls::*;
+pub use impls::*;
 
 #[frame_support::pallet]
 pub mod pallet {

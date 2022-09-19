@@ -1319,6 +1319,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "metamui-primitives",
  "pallet-transaction-payment",
  "parity-scale-codec",
  "scale-info",

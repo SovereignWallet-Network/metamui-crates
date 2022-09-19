@@ -188,6 +188,7 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, RuntimeDebug,
 };
 use sp_std::{cmp, fmt::Debug, mem, ops::BitOr, prelude::*, result};
+use metamui_primitives::{Did, traits::{DidResolve, MultiAddress}};
 pub use weights::WeightInfo;
 
 pub use pallet::*;
@@ -239,6 +240,9 @@ pub mod pallet {
 
 		/// The id type for named reserves.
 		type ReserveIdentifier: Parameter + Member + MaxEncodedLen + Ord + Copy;
+
+		/// Resolve Did from Account Id
+		type DidResolution: DidResolve<Self::AccountId>;
 	}
 
 	#[pallet::pallet]
