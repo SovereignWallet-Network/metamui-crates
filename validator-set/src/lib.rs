@@ -339,7 +339,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 	// function to check if a DID is a member of the validator set
 	pub fn is_did_validator(x: Did) -> bool {
-    Members::get().contains(&x)
+    <Members<T, I>>::get().contains(&x)
   }
 }
 
