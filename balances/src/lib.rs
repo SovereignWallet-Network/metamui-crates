@@ -599,14 +599,14 @@ pub mod pallet {
 		DeadAccount,
 		/// Number of named reserves exceed MaxReserves
 		TooManyReserves,
-    /// Got an overflow after adding
-    Overflow,
-    /// Value too low to create account due to existential deposit
-    ExistentialDeposit,
-    // Memo length too long.
-    InvalidMemoLength,
-    /// Balance low
-    BalanceTooLow
+		/// Got an overflow after adding
+		Overflow,
+		/// Value too low to create account due to existential deposit
+		ExistentialDeposit,
+		// Memo length too long.
+		InvalidMemoLength,
+		/// Balance low
+		BalanceTooLow
 	}
 
 	/// The total units issued in the system.
