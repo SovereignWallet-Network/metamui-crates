@@ -1,8 +1,9 @@
 [workspace]
 members = [
     "metamui-primitives",
-    "node-authorities",
     "node-authorization",
+    "node-authorities",
+    "runtime-common",
     "validator-set",
     "collective",
     "balances",

@@ -1312,6 +1312,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
+name = "pallet-authorship"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#45a76f7ea1bf7bbdc9a9b3eb599bb30619849560"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-authorship",
+ "sp-runtime",
+ "sp-std 4.0.0",
+]
+
+[[package]]
 name = "pallet-balances"
 version = "0.0.1"
 dependencies = [
@@ -1325,6 +1340,20 @@ dependencies = [
  "scale-info",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std 4.0.0",
+]
+
+[[package]]
+name = "pallet-balances"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#45a76f7ea1bf7bbdc9a9b3eb599bb30619849560"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
  "sp-runtime",
  "sp-std 4.0.0",
 ]
@@ -1449,6 +1478,21 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std 4.0.0",
+]
+
+[[package]]
+name = "pallet-treasury"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#45a76f7ea1bf7bbdc9a9b3eb599bb30619849560"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "pallet-balances 4.0.0-dev",
+ "parity-scale-codec",
+ "scale-info",
  "sp-runtime",
  "sp-std 4.0.0",
 ]
@@ -1805,6 +1849,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "runtime-common"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "metamui-primitives",
+ "pallet-authorship",
+ "pallet-balances 0.0.1",
+ "pallet-treasury",
+ "sp-std 4.0.0",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2095,6 +2152,17 @@ dependencies = [
  "sp-debug-derive",
  "sp-std 4.0.0",
  "static_assertions",
+]
+
+[[package]]
+name = "sp-authorship"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#45a76f7ea1bf7bbdc9a9b3eb599bb30619849560"
+dependencies = [
+ "parity-scale-codec",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-std 4.0.0",
 ]
 
 [[package]]
