@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
-use frame_support::{traits::{ConstU32}, BoundedVec};
+use frame_support::{traits::{ConstU32}, BoundedVec, sp_runtime::DispatchError};
 use sp_core::sr25519::{Signature as SRSignature};
 use sp_std::{prelude::*};
 
@@ -124,9 +124,13 @@ pub struct VC<Hash> {
 }
 
 /// Trait to get VC details
-pub trait GetVC<Hash> {
+pub trait VCResolve<Hash> {
     /// Get VC from VC Id
     fn get_vc(vc_id: &VCid) -> Option<VC<Hash>>;
     /// Get if VC is used
     fn is_vc_used(vc_id: &VCid) -> bool;
+    /// Set VC used
+    fn set_vc_used(vc_id: &VCid, is_vc_used: bool);
+    /// Decode VC
+    fn decode_vc<E: Decode>(vc_bytes: &[u8]) -> Result<E, DispatchError>;
 }
