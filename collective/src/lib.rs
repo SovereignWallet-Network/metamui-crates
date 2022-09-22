@@ -678,11 +678,11 @@ fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Check whether `who` is a member of the collective.
-	pub fn is_member(who: &Did) -> bool {
-		// Note: The dispatchables *do not* use this to check membership so make sure
-		// to update those if this is changed.
-		Self::members().contains(who)
-	}
+	// pub fn is_member(who: &Did) -> bool {
+	// 	// Note: The dispatchables *do not* use this to check membership so make sure
+	// 	// to update those if this is changed.
+	// 	Self::members().contains(who)
+	// }
 
 	/// Execute immediately when adding a new proposal.
 	pub fn do_propose_execute(

@@ -1,6 +1,5 @@
 use super::pallet::*;
-use codec::Codec;
-use metamui_primitives::traits::{IsMember};
+use metamui_primitives::{Did, traits::IsMember};
 use sp_runtime::traits::{LookupError, StaticLookup};
 
 impl<T: Config> IsMember for Pallet<T> {
