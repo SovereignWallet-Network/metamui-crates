@@ -35,6 +35,8 @@ pub mod pallet {
 		type ValidatorOrigin: EnsureOrigin<Self::Origin>;
 		/// Maximum number of key changes by an account
 		type MaxKeyChanges: Get<u32>;
+		/// On Did update
+		type OnDidUpdate: DidUpdated;
 	}
 
 	#[pallet::pallet]
@@ -140,10 +142,16 @@ pub mod pallet {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
 			
-			Self::do_create_private_did(public_key, identifier, metadata)?;
+			Self::do_create_private_did(public_key, identifier, metadata.clone())?;
 
 			// Emit an event.
 			Self::deposit_event(Event::DidCreated { did: identifier });
+
+			T::OnDidUpdate::on_new_private_did(
+				public_key,
+				identifier,
+				metadata,
+			);
 
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
@@ -168,10 +176,18 @@ pub mod pallet {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
 			
-			Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name)?;
+			Self::do_create_public_did(public_key, identifier, metadata.clone(), registration_number.clone(), company_name.clone())?;
 
 			// Emit an event.
 			Self::deposit_event(Event::DidCreated { did: identifier });
+
+			T::OnDidUpdate::on_new_public_did(
+				public_key,
+				identifier,
+				metadata,
+				registration_number,
+				company_name,
+			);
 
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
@@ -188,6 +204,10 @@ pub mod pallet {
 
 			// deposit an event that the DID has been removed
 			Self::deposit_event(Event::DidRemoved{ did: identifier });
+
+			T::OnDidUpdate::on_did_removal(
+				identifier,
+			);
 
 			Ok(())
 		}
@@ -207,6 +227,12 @@ pub mod pallet {
 
 			// create key updated event
 			Self::deposit_event(Event::DidKeyUpdated{ did: identifier });
+
+			T::OnDidUpdate::on_key_rotation(
+				identifier,
+				public_key,
+			);
+
 			Ok(())
 		}
 
@@ -225,6 +251,11 @@ pub mod pallet {
 
 			// create metadata updated event
 			Self::deposit_event(Event::DidMetadataUpdated{ did: identifier });
+
+			T::OnDidUpdate::on_metadata_updation(
+				identifier,
+				metadata,
+			);
 
 			Ok(())
 		}
