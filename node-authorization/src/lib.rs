@@ -330,7 +330,7 @@ pub mod pallet {
 
 			let owner = Owners::<T>::get(&remove).ok_or(Error::<T>::NotClaimed)?;
 
-			let mut peer_ids = PeerIds::<T>::get(owner).unwrap();
+			let mut peer_ids = PeerIds::<T>::get(owner).unwrap_or_default();
 			peer_ids.retain(|p| p != &remove);
 			peer_ids.push(add.clone());
 
@@ -379,7 +379,7 @@ pub mod pallet {
 			ensure!(node.0.len() < T::MaxPeerIdLength::get() as usize, Error::<T>::PeerIdTooLong);
 			ensure!(!Owners::<T>::contains_key(&node), Error::<T>::AlreadyClaimed);
 
-			let mut peer_ids = PeerIds::<T>::get(sender_did).unwrap();
+			let mut peer_ids = PeerIds::<T>::get(sender_did).unwrap_or_default();
 			peer_ids.push(node.clone());
 			PeerIds::<T>::insert(sender_did, peer_ids);
 
@@ -405,7 +405,7 @@ pub mod pallet {
 			ensure!(owner == sender_did, Error::<T>::NotOwner);
 			ensure!(!WellKnownNodes::<T>::get().contains(&node), Error::<T>::PermissionDenied);
 			
-			let mut peer_ids = PeerIds::<T>::get(sender_did).unwrap();
+			let mut peer_ids = PeerIds::<T>::get(sender_did).unwrap_or_default();
 			peer_ids.retain(|p| p != &node);
 			PeerIds::<T>::insert(sender_did, peer_ids);
 
@@ -521,7 +521,7 @@ impl<T: Config> Pallet<T> {
 
 		for (node, who) in nodes.iter() {
 			Owners::<T>::insert(node, who);
-			let mut peer_ids = PeerIds::<T>::get(who).unwrap();
+			let mut peer_ids = PeerIds::<T>::get(who).unwrap_or_default();
 			peer_ids.push(node.clone());
 			PeerIds::<T>::insert(who, peer_ids);
 		}

@@ -3,6 +3,7 @@ use crate::types::*;
 use codec::{Codec};
 use metamui_primitives::traits::{MultiAddress, DidResolve};
 use sp_runtime::traits::{LookupError, StaticLookup};
+use frame_support::pallet_prelude::DispatchResult;
 
 impl<T: Config> DidResolve<T::AccountId> for Pallet<T> {
 
@@ -49,14 +50,14 @@ where
   }
 }
 
-
+/// Implement update did
 impl<T: Config> UpdateDid for Pallet<T> {
 	fn add_private_did(
 			public_key: PublicKey,
 			identifier: Did,
 			metadata: Metadata,
-	) {
-    let _ = Self::do_create_private_did(public_key, identifier, metadata);
+	) -> DispatchResult {
+    Self::do_create_private_did(public_key, identifier, metadata)
   }
 
 	fn add_public_did(
@@ -65,25 +66,25 @@ impl<T: Config> UpdateDid for Pallet<T> {
 			metadata: Metadata,
 			registration_number: RegistrationNumber,
 			company_name: CompanyName,
-	) {
-    let _ = Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name);
+	) -> DispatchResult {
+    Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name)
   }
 
-	fn remove_did(identifier: Did) {
-    let _ = Self::do_remove(&identifier);
+	fn remove_did(identifier: Did) -> DispatchResult {
+    Self::do_remove(&identifier)
   }
 
 	fn rotate_key(
       identifier: Did,
 			public_key: PublicKey,
-	) {
-    let _ = Self::do_rotate_key(&identifier, &public_key);
+	) -> DispatchResult {
+    Self::do_rotate_key(&identifier, &public_key)
   }
 
 	fn update_metadata(
       identifier: Did,
 			metadata: Metadata,
-	) {
-    let _ = Self::do_update_metadata(&identifier, &metadata);
+	) -> DispatchResult {
+    Self::do_update_metadata(&identifier, &metadata)
   }
 }

@@ -64,6 +64,7 @@ impl pallet_did::Config for Test {
 	type Event = Event;
 	type ValidatorOrigin = EnsureSigned<Self::AccountId>;
 	type MaxKeyChanges = ConstU32<16>;
+	type OnDidUpdate = ();
 }
 
 // Build genesis storage according to the mock runtime.

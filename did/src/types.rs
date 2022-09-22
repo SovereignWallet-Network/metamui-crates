@@ -1,9 +1,8 @@
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::ConstU32, BoundedVec};
+use frame_support::{traits::ConstU32, BoundedVec, pallet_prelude::DispatchResult};
 use sp_core::sr25519;
 use scale_info::TypeInfo;
 pub use metamui_primitives::Did;
-
 
 pub type PublicKey = sr25519::Public;
 pub type MaxMetadata = ConstU32<32>;
@@ -46,7 +45,7 @@ pub trait UpdateDid {
 			public_key: PublicKey,
 			identifier: Did,
 			metadata: Metadata,
-	);
+	) -> DispatchResult;
 
 	fn add_public_did(
 			public_key: PublicKey,
@@ -54,19 +53,19 @@ pub trait UpdateDid {
 			metadata: Metadata,
 			registration_number: RegistrationNumber,
 			company_name: CompanyName,
-	);
+	) -> DispatchResult;
 
-	fn remove_did(identifier: Did);
+	fn remove_did(identifier: Did) -> DispatchResult;
 
 	fn rotate_key(
 			identifier: Did,
 			public_key: PublicKey,
-	);
+	) -> DispatchResult;
 
 	fn update_metadata(
 			identifier: Did,
 			metadata: Metadata,
-	);
+	) -> DispatchResult;
 }
 
 impl UpdateDid for () {
@@ -74,7 +73,9 @@ impl UpdateDid for () {
 			_: PublicKey,
 			_: Did,
 			_: Metadata,
-	) {}
+	) -> DispatchResult {
+		Err("Not Implemented".into())
+	}
 
 	fn add_public_did(
 			_: PublicKey,
@@ -82,19 +83,27 @@ impl UpdateDid for () {
 			_: Metadata,
 			_: RegistrationNumber,
 			_: CompanyName,
-	) {}
+	)  -> DispatchResult{
+		Err("Not Implemented".into())
+	}
 
-	fn remove_did(_: Did) {}
+	fn remove_did(_: Did) -> DispatchResult {
+		Err("Not Implemented".into())
+	}
 
 	fn rotate_key(
 			_: Did,
 			_: PublicKey,
-	) {}
+	) -> DispatchResult {
+		Err("Not Implemented".into())
+	}
 
 	fn update_metadata(
 			_: Did,
 			_: Metadata,
-	) {}
+	) -> DispatchResult {
+		Err("Not Implemented".into())
+	}
 }
 
 
@@ -132,7 +141,9 @@ impl DidUpdated for () {
 			_: PublicKey,
 			_: Did,
 			_: Metadata,
-	) {}
+	) {
+		()
+	}
 
 	fn on_new_public_did(
 			_: PublicKey,
@@ -140,17 +151,25 @@ impl DidUpdated for () {
 			_: Metadata,
 			_: RegistrationNumber,
 			_: CompanyName,
-	) {}
+	) {
+		()
+	}
 
-	fn on_did_removal(_: Did) {}
+	fn on_did_removal(_: Did) {
+		()
+	}
 
 	fn on_key_rotation(
 			_: Did,
 			_: PublicKey,
-	) {}
+	) {
+		()
+	}
 
 	fn on_metadata_updation(
 			_: Did,
 			_: Metadata,
-	) {}
+	) {
+		()
+	}
 }
