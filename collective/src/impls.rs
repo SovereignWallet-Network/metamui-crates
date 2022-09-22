@@ -7,6 +7,6 @@ impl<T: Config> IsMember for Pallet<T> {
   fn is_member(who: &Did) -> bool {
   	// Note: The dispatchables *do not* use this to check membership so make sure
   	// to update those if this is changed.
-  	Self::members().contains(who)
+  	Self::is_member(who)
   }
 }
