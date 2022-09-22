@@ -338,7 +338,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 
 	pub fn is_did_validator(x: Did) -> bool {
-		<Members<T, I>>::get().contains(&x)
+		Members::<T, I>::get().contains(&x)
 	}
 }
 
