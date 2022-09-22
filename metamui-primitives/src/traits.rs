@@ -154,3 +154,13 @@ impl<Hash> VCResolve<Hash> for () {
         Err("Not Implemented".into())
     }
 }
+
+pub trait IsMember {
+    fn is_caller_council_member(caller: AccountId) -> bool{}
+}
+
+impl IsMember for () {
+    fn is_caller_council_member(caller: AccountId) -> bool{
+        false
+    }
+}
