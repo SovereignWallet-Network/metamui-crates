@@ -146,7 +146,9 @@ impl<Hash> VCResolve<Hash> for () {
         true
     }
     /// Set VC used
-    fn set_vc_used(_vc_id: &VCid, _is_vc_used: bool) {}
+    fn set_vc_used(_vc_id: &VCid, _is_vc_used: bool) {
+        ()
+    }
     /// Decode VC
     fn decode_vc<E: Decode>(_vc_bytes: &[u8]) -> Result<E, DispatchError> {
         Err("Not Implemented".into())
