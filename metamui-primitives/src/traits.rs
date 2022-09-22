@@ -156,11 +156,11 @@ impl<Hash> VCResolve<Hash> for () {
 }
 
 pub trait IsMember {
-    fn is_caller_council_member(caller: AccountId) -> bool;
+    fn is_caller_council_member(_: AccountId) -> bool;
 }
 
 impl IsMember for () {
-    fn is_caller_council_member(caller: AccountId) -> bool{
+    fn is_caller_council_member(_: AccountId) -> bool{
         false
     }
 }
