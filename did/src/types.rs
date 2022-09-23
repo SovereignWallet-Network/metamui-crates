@@ -9,7 +9,7 @@ pub type MaxMetadata = ConstU32<32>;
 pub type MaxRegNumLen = ConstU32<32>;
 pub type MaxCompNameLen = ConstU32<32>;
 pub type Metadata = BoundedVec<u8, MaxMetadata>;
-pub type RegistrationNumber = BoundedVec<u8, MaxMetadata>;
+pub type RegistrationNumber = BoundedVec<u8, MaxRegNumLen>;
 pub type CompanyName = BoundedVec<u8, MaxCompNameLen>;
 
 
