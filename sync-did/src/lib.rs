@@ -20,6 +20,7 @@ pub mod pallet {
 	use metamui_primitives::Did;
 	use frame_system::Config as SystemConfig;
 	use cumulus_primitives_core::ParaId;
+	use xcm::latest::prelude::*;
 
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -32,6 +33,11 @@ pub mod pallet {
 			+ Into<Result<CumulusOrigin, <Self as Config>::Origin>>;
 		/// On Update Did
 		type OnUpdateDid: UpdateDid;
+
+		/// The overarching call type; we assume sibling chains use the same type.
+		type Call: From<Call<Self>> + Encode;
+
+		type XcmSender: SendXcm;
 	}
 
 	#[pallet::pallet]
@@ -44,13 +50,47 @@ pub mod pallet {
 		/// New private did synced from a parachain
 		NewPrivateDidSynced { did: Did, para_id: ParaId },
 
+		/// New private did sent from a parachain
+		NewPrivateDidSent { did: Did, para_id: ParaId },
+
+		/// Error Sending New private Did from parachain
+		ErrorSendingNewPrivateDid { did: Did, para_id: ParaId },
+
+		/// New public did synced from a parachain
 		NewPublicDidSynced { did: Did, para_id: ParaId },
 
+		/// New public did sent from a parachain
+		NewPublicDidSent { did: Did, para_id: ParaId },
+
+		/// Error Sending New public Did from parachain
+		ErrorSendingNewPublicDid { did: Did, para_id: ParaId },
+
+		/// Did removal synced from a parachain
 		DidRemovalSynced { did: Did, para_id: ParaId },
 
+		/// Did removal sent from a parachain
+		DidRemovalSent { did: Did, para_id: ParaId },
+
+		/// Error Sending New public Did from parachain
+		ErrorSendingDidRemoval { did: Did, para_id: ParaId },
+
+		/// Did key update synced from a parachain
 		DidKeyUpdateSynced { did: Did, para_id: ParaId },
 
+		/// Did key update sent from a parachain
+		DidKeyUpdateSent { did: Did, para_id: ParaId },
+
+		/// Error Sending New public Did from parachain
+		ErrorSendingDidKeyUpdate { did: Did, para_id: ParaId },
+
+		/// New private did synced from a parachain
 		DidMetadataUpdateSynced { did: Did, para_id: ParaId },
+
+		/// New private did sent from a parachain
+		DidMetadataUpdateSent { did: Did, para_id: ParaId },
+
+		/// Error Sending New public Did from parachain
+		ErrorSendingDidMetadataUpdate { did: Did, para_id: ParaId },
 
 	}
 
@@ -184,6 +224,61 @@ pub mod pallet {
 			Self::deposit_event(Event::DidMetadataUpdateSynced{ did: identifier, para_id });
 
 			Ok(())
+		}
+	}
+
+	impl<T: Config> DidUpdated for Pallet<T> {
+		fn on_new_private_did(
+			public_key: PublicKey,
+			identifier: Did,
+			metadata: Metadata,
+		) {
+			let para_id: ParaId = 2000.into();
+			match T::XcmSender::send_xcm(
+				(1, Junction::Parachain(para_id.into())),
+				Xcm(vec![Transact {
+					origin_type: OriginKind::Native,
+					require_weight_at_most: 1_000,
+					call: <T as Config>::Call::from(Call::<T>::create_private {
+						public_key,
+						identifier,
+						metadata,
+					})
+					.encode()
+					.into(),
+				}]),
+			) {
+				Ok(()) => Self::deposit_event(Event::NewPrivateDidSent {did: identifier, para_id}),
+				Err(e) => Self::deposit_event(Event::ErrorSendingNewPrivateDid {did: identifier, para_id}),
+			}
+		}
+
+		fn on_new_public_did(
+				public_key: PublicKey,
+				identifier: Did,
+				metadata: Metadata,
+				registration_number: RegistrationNumber,
+				company_name: CompanyName,
+		) {
+			()
+		}
+
+		fn on_did_removal(identifier: Did) {
+			()
+		}
+
+		fn on_key_rotation(
+				identifier: Did,
+				public_key: PublicKey,
+		) {
+			()
+		}
+
+		fn on_metadata_updation(
+				identifier: Did,
+				metadata: Metadata,
+		) {
+			()
 		}
 	}
 }
