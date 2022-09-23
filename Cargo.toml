@@ -6,6 +6,7 @@ members = [
     "validator-set",
     "collective",
     "balances",
+    "sync-did",
     "did"
 ]
 [profile.release]
