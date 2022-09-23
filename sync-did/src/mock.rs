@@ -56,6 +56,8 @@ impl system::Config for Test {
 
 impl pallet_sync_did::Config for Test {
 	type Event = Event;
+	type Origin = ();
+	type OnUpdateDid = ();
 }
 
 // Build genesis storage according to the mock runtime.
