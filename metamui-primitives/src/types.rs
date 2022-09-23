@@ -49,7 +49,6 @@ pub struct VC<Hash> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SlashMintTokens {
   pub vc_id: VCid,
-  pub currency_code: [u8; 8],
   pub amount: u128,
 }
 
@@ -57,6 +56,5 @@ pub struct SlashMintTokens {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TokenTransferVC {
   pub vc_id: VCid,
-  pub currency_code: [u8; 8],
   pub amount: u128,
 }
