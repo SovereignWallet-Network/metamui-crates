@@ -21,6 +21,7 @@ pub mod pallet {
 	use frame_system::Config as SystemConfig;
 	use cumulus_primitives_core::ParaId;
 	use xcm::latest::prelude::*;
+	use sp_std::prelude::*;
 
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
