@@ -11,6 +11,22 @@ pub type VCPropertyLimit = ConstU32<32>;
 /// VC Property type
 pub type VCProperty = BoundedVec<u8, VCPropertyLimit>;
 
+/// VC Pallet Errors Available Publicly
+pub enum VCErrors {
+  /// Unable to decode the VC
+  InvalidVC,
+  /// VC is not owned by the given DID
+  DidNotRegisteredWithVC,
+  /// Linked VC does not exist
+  LinkedVCNotFound,
+  /// The given VCId does not exist on chain
+  VCIdDoesNotExist,
+  /// VC status is Inactive, cant be use it
+  VCIsNotActive,
+  /// VC is already used, can't reused
+  VCAlreadyUsed,
+}
+
 /// Type of VCs
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
