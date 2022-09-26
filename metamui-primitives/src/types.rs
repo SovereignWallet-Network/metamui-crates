@@ -15,8 +15,8 @@ pub type VCProperty = BoundedVec<u8, VCPropertyLimit>;
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, Debug, TypeInfo)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum VCStatus {
-    Active,
-    Inactive,
+  Active,
+  Inactive,
 }
 
 /// VC Pallet Errors Available Publicly
