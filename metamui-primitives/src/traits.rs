@@ -84,7 +84,7 @@ pub trait VCResolve<Hash> {
     /// Get if VC is used
     fn is_vc_used(vc_id: &VCid) -> bool;
     /// Set VC used
-    fn set_vc_used(vc_id: &VCid, is_vc_used: bool);
+    fn set_is_vc_used(vc_id: &VCid, is_vc_used: bool);
     /// Decode VC
     fn decode_vc<E: Decode>(vc_bytes: &[u8]) -> Result<E, DispatchError>;
   }
@@ -99,7 +99,7 @@ impl<Hash> VCResolve<Hash> for () {
         true
     }
     /// Set VC used
-    fn set_vc_used(_vc_id: &VCid, _is_vc_used: bool) {
+    fn set_is_vc_used(_vc_id: &VCid, _is_vc_used: bool) {
         ()
     }
     /// Decode VC
