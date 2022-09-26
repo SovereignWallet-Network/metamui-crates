@@ -11,6 +11,14 @@ pub type VCPropertyLimit = ConstU32<32>;
 /// VC Property type
 pub type VCProperty = BoundedVec<u8, VCPropertyLimit>;
 
+/// Types of VC Statuses Available
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, Debug, TypeInfo)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum VCStatus {
+    Active,
+    Inactive,
+}
+
 /// VC Pallet Errors Available Publicly
 pub enum VCErrors {
   /// Unable to decode the VC
