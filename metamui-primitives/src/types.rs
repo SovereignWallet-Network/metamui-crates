@@ -15,24 +15,10 @@ pub type VCProperty = BoundedVec<u8, VCPropertyLimit>;
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, Debug, TypeInfo)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum VCStatus {
+  /// VC Is Active
   Active,
+  /// VC Is Inactive
   Inactive,
-}
-
-/// VC Pallet Errors Available Publicly
-pub enum VCErrors {
-  /// Unable to decode the VC
-  InvalidVC,
-  /// VC is not owned by the given DID
-  DidNotRegisteredWithVC,
-  /// Linked VC does not exist
-  LinkedVCNotFound,
-  /// The given VCId does not exist on chain
-  VCIdDoesNotExist,
-  /// VC status is Inactive, cant be use it
-  VCIsNotActive,
-  /// VC is already used, can't reused
-  VCAlreadyUsed,
 }
 
 /// Type of VCs
@@ -70,16 +56,22 @@ pub struct VC<Hash> {
   pub vc_property: VCProperty,
 }
 
+/// SlashMintTokens Type VC
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SlashMintTokens {
+  /// VCid field
   pub vc_id: VCid,
+  /// Amount field
   pub amount: u128,
 }
 
+/// TokenTransfer Type VC
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TokenTransferVC {
+  /// VCid field
   pub vc_id: VCid,
+  /// Amount field
   pub amount: u128,
 }

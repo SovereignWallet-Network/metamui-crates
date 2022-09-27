@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
-use frame_support::{traits::{ConstU32}, BoundedVec, sp_runtime::DispatchError};
+use frame_support::{ sp_runtime::DispatchError };
 use sp_std::{prelude::*};
 
 // DID
@@ -14,7 +14,7 @@ pub trait DidResolve<AccountId> {
   fn did_exists(x: MultiAddress<AccountId>) -> bool;
   /// convert accountId to DID
   fn get_did(k: &AccountId) -> Option<Did>;
-  /// convert accountId to DID
+  /// convert DID to accountId
   fn get_account_id(k: &Did) -> Option<AccountId>;
 }
 
@@ -27,7 +27,7 @@ impl<AccountId> DidResolve<AccountId> for () {
     fn get_did(_: &AccountId) -> Option<Did> {
         None
     }
-    /// convert accountId to DID
+    /// convert DID to accountId
     fn get_account_id(_: &Did) -> Option<AccountId> {
         None
     }
@@ -108,27 +108,36 @@ impl<Hash> VCResolve<Hash> for () {
     }
 }
 
+/// Trait to give back the VCid
 pub trait HasVCId {
+    /// Function to return the VCid
     fn vc_id(&self) -> VCid;
 }
 
+/// Implementing HasVCId for SlashMintTokens
 impl HasVCId for SlashMintTokens {
+    /// Function to return the VCid
     fn vc_id(&self) -> VCid {
         self.vc_id
     }
 }
 
+/// Implementing HasVCId for TokenTransferVC
 impl HasVCId for TokenTransferVC {
+    /// Function to return the VCid
     fn vc_id(&self) -> VCid {
         self.vc_id
     }
 }
 
+/// Trait to check if a Did is a council member
 pub trait IsMember {
+    /// Function to check council membership
     fn is_member(_: &Did) -> bool;
 }
 
 impl IsMember for () {
+    /// Function to check council membership
     fn is_member(_: &Did) -> bool{
         false
     }
