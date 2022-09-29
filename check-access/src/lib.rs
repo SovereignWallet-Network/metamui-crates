@@ -181,9 +181,7 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-    match Self::validate(&self, who, call, info, len){
-      Ok(_) => Ok(()),
-      Err(_) => Err(InvalidTransaction::Custom(230).into())
-    }
+    Self::validate(&self, who, call, info, len)?;
+    Ok(())
   }
 }
