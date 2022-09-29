@@ -13,6 +13,10 @@ use sp_runtime::{
 /// All traits for metamui
 pub mod traits;
 
+/// All types(stucts and enums) for metamui
+pub mod types;
+use crate::types::*;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 

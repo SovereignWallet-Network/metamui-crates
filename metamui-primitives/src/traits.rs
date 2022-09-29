@@ -3,10 +3,8 @@ use codec::{Decode, Encode};
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
-use frame_support::{traits::{ConstU32}, BoundedVec, sp_runtime::DispatchError};
-use sp_core::sr25519::{Signature as SRSignature};
+use frame_support::{ sp_runtime::DispatchError };
 use sp_std::{prelude::*};
-
 
 // DID
 
@@ -16,7 +14,7 @@ pub trait DidResolve<AccountId> {
   fn did_exists(x: MultiAddress<AccountId>) -> bool;
   /// convert accountId to DID
   fn get_did(k: &AccountId) -> Option<Did>;
-  /// convert accountId to DID
+  /// convert DID to accountId
   fn get_account_id(k: &Did) -> Option<AccountId>;
 }
 
@@ -29,7 +27,7 @@ impl<AccountId> DidResolve<AccountId> for () {
     fn get_did(_: &AccountId) -> Option<Did> {
         None
     }
-    /// convert accountId to DID
+    /// convert DID to accountId
     fn get_account_id(_: &Did) -> Option<AccountId> {
         None
     }
@@ -78,67 +76,22 @@ impl<AccountId: Default> Default for MultiAddress<AccountId> {
         MultiAddress::Id(Default::default())
     }
 }
-
-
 // VC
-
-/// VC Property max length
-pub type VCPropertyLimit = ConstU32<32>;
-/// VC Property type
-pub type VCProperty = BoundedVec<u8, VCPropertyLimit>;
-
-/// Type of VCs
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum VCType {
-    /// VC to create a Token
-    TokenVC,
-    /// VC to slash token
-    SlashTokens,
-    /// VC to mint token
-    MintTokens,
-    /// VC to transfer token
-    TokenTransferVC,
-    /// VC for generic purpose
-    GenericVC,
-}
-
-
-/// Struct for VC
-#[derive(Clone, PartialEq, Eq, RuntimeDebug, Encode, Decode, TypeInfo)]
-pub struct VC<Hash> {
-    /// Hash of the data in VC
-    pub hash: Hash,
-    /// Owner of VC
-    pub owner: Did,
-    /// Issuers of VC
-    pub issuers: Vec<Did>,
-    /// Signatures of Issuers on hash
-    pub signatures: Vec<SRSignature>,
-    /// If VC is used or not
-    pub is_vc_used: bool,
-    /// Type of VC
-    pub vc_type: VCType,
-    /// VC payload
-    pub vc_property: VCProperty,
-}
-
 /// Trait to get VC details
 pub trait VCResolve<Hash> {
     /// Get VC from VC Id
-    fn get_vc(vc_id: &VCid) -> Option<VC<Hash>>;
+    fn get_vc(vc_id: &VCid) -> Option<(VC<Hash>, VCStatus)>;
     /// Get if VC is used
     fn is_vc_used(vc_id: &VCid) -> bool;
     /// Set VC used
-    fn set_vc_used(vc_id: &VCid, is_vc_used: bool);
+    fn set_is_vc_used(vc_id: &VCid, is_vc_used: bool);
     /// Decode VC
     fn decode_vc<E: Decode>(vc_bytes: &[u8]) -> Result<E, DispatchError>;
-}
-
-
+  }
+  
 impl<Hash> VCResolve<Hash> for () {
     /// Get VC from VC Id
-    fn get_vc(_vc_id: &VCid) -> Option<VC<Hash>> {
+    fn get_vc(_vc_id: &VCid) -> Option<(VC<Hash>, VCStatus)> {
         None
     }
     /// Get if VC is used
@@ -146,7 +99,7 @@ impl<Hash> VCResolve<Hash> for () {
         true
     }
     /// Set VC used
-    fn set_vc_used(_vc_id: &VCid, _is_vc_used: bool) {
+    fn set_is_vc_used(_vc_id: &VCid, _is_vc_used: bool) {
         ()
     }
     /// Decode VC
@@ -155,11 +108,36 @@ impl<Hash> VCResolve<Hash> for () {
     }
 }
 
+/// Trait to give back the VCid
+pub trait HasVCId {
+    /// Function to return the VCid
+    fn vc_id(&self) -> VCid;
+}
+
+/// Implementing HasVCId for SlashMintTokens
+impl HasVCId for SlashMintTokens {
+    /// Function to return the VCid
+    fn vc_id(&self) -> VCid {
+        self.vc_id
+    }
+}
+
+/// Implementing HasVCId for TokenTransferVC
+impl HasVCId for TokenTransferVC {
+    /// Function to return the VCid
+    fn vc_id(&self) -> VCid {
+        self.vc_id
+    }
+}
+
+/// Trait to check if a Did is a council member
 pub trait IsMember {
+    /// Function to check council membership
     fn is_member(_: &Did) -> bool;
 }
 
 impl IsMember for () {
+    /// Function to check council membership
     fn is_member(_: &Did) -> bool{
         false
     }
