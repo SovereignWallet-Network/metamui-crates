@@ -4,7 +4,7 @@ use frame_support::{ weights::DispatchInfo, traits::GetCallMetadata };
 use sp_runtime::{
   traits::{ DispatchInfoOf, Dispatchable, SignedExtension },
   transaction_validity::{
-    InvalidTransaction, TransactionLongevity, TransactionPriority, TransactionValidity, 
+    InvalidTransaction, TransactionLongevity, TransactionPriority, 
     TransactionValidityError, ValidTransaction,
   },
 };
@@ -150,7 +150,7 @@ where
     call: &Self::Call,
     info: &DispatchInfoOf<Self::Call>,
     _len: usize,
-  ) -> TransactionValidity {
+  ) -> Result<ValidTransaction, TransactionValidityError> {
   
 		let pallet_name = <Pallet<T>>::convert_to_array(
 			call.get_call_metadata().pallet_name.as_bytes().to_vec()
@@ -176,11 +176,14 @@ where
 
 	fn pre_dispatch(
 		self,
-		_: &Self::AccountId,
-		_: &Self::Call,
-		_: &DispatchInfoOf<Self::Call>,
-		_: usize,
+		who: &Self::AccountId,
+	  call: &Self::Call,
+		info: &DispatchInfoOf<Self::Call>,
+		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-    Ok(())
+    match Self::validate(&self, who, call, info, len){
+      Ok(_) => Ok(()),
+      Err(_) => Err(InvalidTransaction::Custom(230).into())
+    }
   }
 }
