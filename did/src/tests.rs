@@ -126,9 +126,8 @@ fn test_add_private_did() {
 	new_test_ext().execute_with(|| {
 		let identifier = *b"did:ssid:Bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 		let public_key = sr25519::Public([2; 32]);
-		let metadata: types::Metadata = "metadata".as_bytes().to_vec().try_into().unwrap();
+		let metadata: types::Metadata = *b"metadata\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 		
-
 		assert_ok!(Did::create_private(
 			Origin::signed(VALIDATOR_ACCOUNT),
 			public_key,
@@ -765,7 +764,7 @@ fn test_metadata_updation_private() {
 		));
 
 		//assign new metadata to a variable
-		let new_metadata: BoundedVec<u8, ConstU32<32>> = bounded_vec![0, 0, 0, 0, 0, 0, 0];
+		let new_metadata: types::Metadata = *b"new_metadata\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 
 		//update the existing metadata with new metadata
 		assert_ok!(Did::update_metadata(
@@ -814,7 +813,7 @@ fn test_metadata_updation_public() {
 		));
 
 		//assign new metadata to a variable
-		let new_metadata: BoundedVec<u8, ConstU32<32>> = bounded_vec![0, 0, 0, 0, 0, 0, 0];
+		let new_metadata: types::Metadata = *b"new_metadata\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 
 		//update the existing metadata with new metadata
 		assert_ok!(Did::update_metadata(
