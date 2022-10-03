@@ -10,6 +10,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use system::EnsureRoot;
 
 pub const PALLET_NAME: [u8;32] = [0;32];
 pub const FUNCTION_NAME: [u8;32] = [0;32];
@@ -57,8 +58,12 @@ impl system::Config for Test {
 }
 
 impl pallet_check_access::Config for Test {
+	/// Because this pallet emits events, it depends on the runtime's definition of an event.
 	type Event = Event;
+	/// Trait to resolve Did
   type DidResolution = ();
+	/// Sudo Origin
+	type SudoOrigin = EnsureRoot<Self::AccountId>;
 }
 
 // Build genesis storage according to the mock runtime.

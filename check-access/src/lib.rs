@@ -37,6 +37,8 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Trait to resolve did
 		type DidResolution: DidResolve<Self::AccountId>;
+    /// Sudo Origin
+		type SudoOrigin: EnsureOrigin<Self::Origin>;
 	}
   
   #[pallet::pallet]
@@ -71,7 +73,7 @@ pub mod pallet {
   impl<T: Config> Pallet<T> { 
     #[pallet::weight(1)]
     pub fn add_allowed_extrinsic(origin: OriginFor<T>, pallet_name: PalletName, function_name: FunctionName) -> DispatchResultWithPostInfo {
-      ensure_root(origin)?;
+      T::SudoOrigin::ensure_origin(origin)?;
 
 			// ensure extrinsic is not already added
 			let extrinsic = ExtrinsicsStruct { pallet_name, function_name }; 
@@ -84,7 +86,7 @@ pub mod pallet {
           
     #[pallet::weight(1)]
     pub fn remove_allowed_extrinsic(origin: OriginFor<T>, pallet_name: PalletName, function_name: FunctionName) -> DispatchResultWithPostInfo {
-      ensure_root(origin)?;
+      T::SudoOrigin::ensure_origin(origin)?;
 
 			// ensure extrinsic exists on chain
 			let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
@@ -157,7 +159,7 @@ where
 		);
 
 		let function_name = <Pallet<T>>::convert_to_array(
-			call.get_call_metadata().pallet_name.as_bytes().to_vec()
+			call.get_call_metadata().function_name.as_bytes().to_vec()
 		);
 
 		if <Pallet<T>>::check_pallet(pallet_name, function_name) || <T>::DidResolution::did_exists(MultiAddress::Id(who.clone())) {
