@@ -74,7 +74,7 @@ pub mod pallet {
     #[pallet::weight(1)]
     pub fn add_allowed_extrinsic(origin: OriginFor<T>, pallet_name: PalletName, function_name: FunctionName) -> DispatchResultWithPostInfo {
       T::SudoOrigin::ensure_origin(origin)?;
-
+      print!("pallet: {:?} function: {:?}", pallet_name, function_name);
 			// ensure extrinsic is not already added
 			let extrinsic = ExtrinsicsStruct { pallet_name, function_name }; 
 			ensure!(!WhitelistedPallets::<T>::contains_key(extrinsic.clone()), Error::<T>::ExtrinsicAlreadyExists);
@@ -102,6 +102,7 @@ pub mod pallet {
 impl<T: Config> Pallet<T> { 
   fn check_pallet(pallet_name: PalletName, function_name: FunctionName) -> bool{
 		let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
+    print!("pallet: {:?} function: {:?}", pallet_name, function_name);
     <WhitelistedPallets<T>>::contains_key(extrinsic)
   }
 
@@ -161,6 +162,8 @@ where
 		let function_name = <Pallet<T>>::convert_to_array(
 			call.get_call_metadata().function_name.as_bytes().to_vec()
 		);
+
+    print!("pallet: {:?} function: {:?}", pallet_name, function_name);
 
 		if <Pallet<T>>::check_pallet(pallet_name, function_name) || <T>::DidResolution::did_exists(MultiAddress::Id(who.clone())) {
 			Ok(ValidTransaction {
