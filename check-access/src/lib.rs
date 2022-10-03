@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{ Decode, Encode };
-use frame_support::{ print, weights::DispatchInfo, traits::GetCallMetadata };
+use frame_support::{ weights::DispatchInfo, traits::GetCallMetadata };
 use sp_runtime::{
   traits::{ DispatchInfoOf, Dispatchable, SignedExtension },
   transaction_validity::{
@@ -18,7 +18,8 @@ use sp_std::fmt::Debug;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 use scale_info::TypeInfo;
-
+use scale_info::prelude::string::{ String, ToString };
+use sp_std::borrow::ToOwned;
 use metamui_primitives::traits::{ DidResolve, MultiAddress };
 pub mod types;
 use crate::types::*;
