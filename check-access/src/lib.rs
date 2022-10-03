@@ -74,8 +74,6 @@ pub mod pallet {
     #[pallet::weight(1)]
     pub fn add_allowed_extrinsic(origin: OriginFor<T>, pallet_name: PalletName, function_name: FunctionName) -> DispatchResultWithPostInfo {
       T::SudoOrigin::ensure_origin(origin)?;
-      print(pallet_name);
-      print(function_name);
 			// ensure extrinsic is not already added
 			let extrinsic = ExtrinsicsStruct { pallet_name, function_name }; 
 			ensure!(!WhitelistedPallets::<T>::contains_key(extrinsic.clone()), Error::<T>::ExtrinsicAlreadyExists);
@@ -103,10 +101,19 @@ pub mod pallet {
 impl<T: Config> Pallet<T> { 
   fn check_pallet(pallet_name: PalletName, function_name: FunctionName) -> bool{
 		let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
-    print(pallet_name);
-    print(function_name);
     <WhitelistedPallets<T>>::contains_key(extrinsic)
   }
+
+  fn adjust_null_padding(name: &str) -> String {
+    let required_padding = 32 - name.len() as i32;
+    let mut extra_padding = "".to_string();
+    let mut counter = 0;
+    while counter < required_padding{
+      extra_padding = extra_padding + "\0";
+      counter+=1;
+    }
+    name.to_owned() + &extra_padding
+	}
 
 	fn convert_to_array(name: Vec<u8>) -> [u8; 32] {
 		(&name[..]).try_into().unwrap_or_default()
@@ -157,16 +164,12 @@ where
     _len: usize,
   ) -> Result<ValidTransaction, TransactionValidityError> {
   
-		let pallet_name = <Pallet<T>>::convert_to_array(
-			call.get_call_metadata().pallet_name.as_bytes().to_vec()
-		);
 
-		let function_name = <Pallet<T>>::convert_to_array(
-			call.get_call_metadata().function_name.as_bytes().to_vec()
-		);
+    let string_pallet_name = <Pallet<T>>::adjust_null_padding(call.get_call_metadata().pallet_name);
+    let string_function_name = <Pallet<T>>::adjust_null_padding(call.get_call_metadata().function_name);
 
-    print(pallet_name);
-    print(function_name);
+		let pallet_name = <Pallet<T>>::convert_to_array(string_pallet_name.as_bytes().to_vec());
+		let function_name = <Pallet<T>>::convert_to_array(string_function_name.as_bytes().to_vec());
 
 		if <Pallet<T>>::check_pallet(pallet_name, function_name) || <T>::DidResolution::did_exists(MultiAddress::Id(who.clone())) {
 			Ok(ValidTransaction {
