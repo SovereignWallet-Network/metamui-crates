@@ -116,7 +116,7 @@ impl<T: Config> Pallet<T> {
     // name.to_owned() + &extra_padding
     let len = 32;
     let diff = len - name.len();
-    name.extend(std::iter::repeat(0).take(diff));
+    name.extend(sp_std::iter::repeat(0).take(diff));
     name.clone()
 	}
 
