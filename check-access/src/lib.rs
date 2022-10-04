@@ -9,17 +9,17 @@ use sp_runtime::{
   },
 };
 
-#[cfg(test)]
-mod mock;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod mock;
+// #[cfg(test)]
+// mod tests;
 
 use sp_std::fmt::Debug;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 use scale_info::TypeInfo;
-// use scale_info::prelude::string::{ String, ToString };
-// use sp_std::borrow::ToOwned;
+use scale_info::prelude::string::{ String, ToString };
+use sp_std::borrow::ToOwned;
 use metamui_primitives::traits::{ DidResolve, MultiAddress };
 pub mod types;
 use crate::types::*;
@@ -47,7 +47,7 @@ pub mod pallet {
   pub struct Pallet<T>(_);
   
   #[pallet::storage]
-  pub(super) type WhitelistedPallets<T: Config> = StorageMap<_, Blake2_128Concat, ExtrinsicsStruct, (), ValueQuery>;
+  pub(super) type WhitelistedPallets<T: Config> =  StorageDoubleMap<_, Blake2_128Concat, PalletName, Blake2_128Concat, FunctionName, (), ValueQuery>;
 
   #[pallet::hooks]
   impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
@@ -56,9 +56,9 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// An Extrinsic has been added to WhiteList
-		ExtrinsicAdded { extrinsic: ExtrinsicsStruct },
+		ExtrinsicAdded { pallet_name: PalletName, function_name: FunctionName },
 		/// An Extrinsic has been removed from WhiteList
-		ExtrinsicRemoved { extrinsic: ExtrinsicsStruct },
+		ExtrinsicRemoved { pallet_name: PalletName, function_name: FunctionName },
 	}
 
 	// Errors inform users that something went wrong.
@@ -76,11 +76,11 @@ pub mod pallet {
     pub fn add_allowed_extrinsic(origin: OriginFor<T>, pallet_name: PalletName, function_name: FunctionName) -> DispatchResultWithPostInfo {
       T::SudoOrigin::ensure_origin(origin)?;
 			// ensure extrinsic is not already added
-			let extrinsic = ExtrinsicsStruct { pallet_name, function_name }; 
-			ensure!(!WhitelistedPallets::<T>::contains_key(extrinsic.clone()), Error::<T>::ExtrinsicAlreadyExists);
+			// let extrinsic = ExtrinsicsStruct { pallet_name, function_name }; 
+			ensure!(!WhitelistedPallets::<T>::contains_key(pallet_name, function_name), Error::<T>::ExtrinsicAlreadyExists);
 
-      WhitelistedPallets::<T>::insert(extrinsic.clone(), ());
-			Self::deposit_event(Event::ExtrinsicAdded{ extrinsic });
+      WhitelistedPallets::<T>::insert(pallet_name, function_name, ());
+			Self::deposit_event(Event::ExtrinsicAdded{pallet_name, function_name });
       Ok(().into())
     }
           
@@ -89,11 +89,11 @@ pub mod pallet {
       T::SudoOrigin::ensure_origin(origin)?;
 
 			// ensure extrinsic exists on chain
-			let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
-			ensure!(WhitelistedPallets::<T>::contains_key(extrinsic.clone()), Error::<T>::ExtrinsicDoesNotExist);
+			// let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
+			ensure!(WhitelistedPallets::<T>::contains_key(pallet_name, function_name), Error::<T>::ExtrinsicDoesNotExist);
 
-      WhitelistedPallets::<T>::remove(extrinsic.clone());
-			Self::deposit_event(Event::ExtrinsicRemoved{ extrinsic });
+      WhitelistedPallets::<T>::remove(pallet_name, function_name);
+			Self::deposit_event(Event::ExtrinsicRemoved{ pallet_name, function_name });
       Ok(().into())
 		}
   }
@@ -101,23 +101,23 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> { 
   fn check_pallet(pallet_name: PalletName, function_name: FunctionName) -> bool{
-		let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
-    <WhitelistedPallets<T>>::contains_key(extrinsic)
+		// let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
+    <WhitelistedPallets<T>>::contains_key(pallet_name, function_name)
   }
 
-  fn adjust_null_padding(name: &mut Vec<u8>) -> Vec<u8> {
-    // let required_padding = 32 - name.len() as i32;
-    // let mut extra_padding = "".to_string();
-    // let mut counter = 0;
-    // while counter < required_padding{
-    //   extra_padding = extra_padding + "\0";
-    //   counter+=1;
-    // }
-    // name.to_owned() + &extra_padding
-    let len = 32;
-    let diff = len - name.len();
-    name.extend(sp_std::iter::repeat(0).take(diff));
-    name.clone()
+  fn adjust_null_padding(name: &mut &str) -> String {
+    let required_padding = 32 - name.len() as i32;
+    let mut extra_padding = "".to_string();
+    let mut counter = 0;
+    while counter < required_padding{
+      extra_padding = extra_padding + "\0";
+      counter+=1;
+    }
+    name.to_owned() + &extra_padding
+    // let len = 32;
+    // let diff = len - name.len();
+    // name.extend(sp_std::iter::repeat(0).take(diff));
+    // name.clone()
 	}
 
 	fn convert_to_array(name: Vec<u8>) -> [u8; 32] {
@@ -170,8 +170,8 @@ where
   ) -> Result<ValidTransaction, TransactionValidityError> {
   
 
-    let vec_pallet_name = <Pallet<T>>::adjust_null_padding(&mut call.get_call_metadata().pallet_name.as_bytes().to_vec());
-    let vec_function_name = <Pallet<T>>::adjust_null_padding(&mut call.get_call_metadata().function_name.as_bytes().to_vec());
+    let vec_pallet_name = <Pallet<T>>::adjust_null_padding(&mut call.get_call_metadata().pallet_name).as_bytes().to_vec();
+    let vec_function_name = <Pallet<T>>::adjust_null_padding(&mut call.get_call_metadata().function_name).as_bytes().to_vec();
 
 		let pallet_name = <Pallet<T>>::convert_to_array(vec_pallet_name);
 		let function_name = <Pallet<T>>::convert_to_array(vec_function_name);
