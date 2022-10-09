@@ -2,10 +2,10 @@
 
 pub use pallet::*;
 
-#[cfg(test)]
-mod mock;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod mock;
+// #[cfg(test)]
+// mod tests;
 
 #[cfg(feature = "std")]
 pub use serde;
@@ -20,11 +20,13 @@ pub use crate::impls::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use codec::{Decode};
-	use frame_support::{pallet_prelude::{*, DispatchResult}, BoundedVec};
-	use frame_system::{self, pallet_prelude::*};
+	use codec::Decode;
+	use frame_support::{ pallet_prelude::{ *, DispatchResult }, BoundedVec };
+	use frame_system::{ self, pallet_prelude::*} ;
 	use sp_std::vec::Vec;
 	use crate::types::*;
+
+	use metamui_primitives::{ VCid, types::PublicDidVC, traits::VCResolve, };
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -37,6 +39,8 @@ pub mod pallet {
 		type MaxKeyChanges: Get<u32>;
 		/// On Did update
 		type OnDidUpdate: DidUpdated;
+		/// Trait to resolve VC
+		type VCResolution: VCResolve<Self::Hash>;
 	}
 
 	#[pallet::pallet]
@@ -120,6 +124,10 @@ pub mod pallet {
 		DIDDoesNotExist,
 		/// The operation is restricted to the validator only
 		NotAValidator,
+    /// The given VCId does not exist on chain
+		VCIdDoesNotExist,
+		/// The entered VCId is not eligible to create Did
+		InvalidVC
 	}
 
 	#[pallet::call]
@@ -128,22 +136,27 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	impl<T: Config> Pallet<T> {
 		/// Adds a DID on chain, where
-		/// origin - the origin of the transaction
-		/// sign_key - public signing key of the DID
+		/// _origin - the origin of the transaction
+		/// public_key - public signing key of the DID
+		/// vc_id - The id of the VC that is authorized to create this DID
 		/// identifier - public unique identifier for the DID
 		/// metadata - optional metadata to the DID - meant for bank nodes to display URL
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn create_private(
-			origin: OriginFor<T>,
+			_origin: OriginFor<T>,
 			public_key: PublicKey,
+			vc_id: VCid,
 			identifier: Did,
 			metadata: Metadata,
 		) -> DispatchResult {
-			// Check if origin is a from a validator
-			T::ValidatorOrigin::ensure_origin(origin)?;
-			
+			// Check if the VCId exists on chain
+			let vcs_details_option = T::VCResolution::get_vc(&vc_id);
+			ensure!(vcs_details_option == None, Error::<T>::VCIdDoesNotExist);
+			let vcs_details = vcs_details_option.unwrap();
+			// Verify if the vc is valid
+			ensure!(!Self::verify_did_vc(vcs_details, VCType::PrivateDidVC), Error::<T>::InvalidVC);
+			// Create the did
 			Self::do_create_private_did(public_key, identifier, metadata.clone())?;
-
 			// Emit an event.
 			Self::deposit_event(Event::DidCreated { did: identifier });
 
@@ -152,7 +165,6 @@ pub mod pallet {
 				identifier,
 				metadata,
 			);
-
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
 		}
@@ -166,18 +178,22 @@ pub mod pallet {
 		/// company_name - Company Name
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn create_public(
-			origin: OriginFor<T>,
+			_origin: OriginFor<T>,
 			public_key: PublicKey,
+			vc_id: VCid,
 			identifier: Did,
 			metadata: Metadata,
-			registration_number: RegistrationNumber,
-			company_name: CompanyName,
+			// registration_number: RegistrationNumber,
+			// company_name: CompanyName,
 		) -> DispatchResult {
-			// Check if origin is a from a validator
-			T::ValidatorOrigin::ensure_origin(origin)?;
-			
-			Self::do_create_public_did(public_key, identifier, metadata.clone(), registration_number.clone(), company_name.clone())?;
-
+			// Verify if the vc is valid
+			let vcs_details_option = T::VCResolution::get_vc(&vc_id);
+			ensure!(vcs_details_option == None, Error::<T>::VCIdDoesNotExist);
+			let vcs_details = vcs_details_option.unwrap();
+			// Decode the VC for getting the registration number and company name
+			let did_vc_property = T::VCResolution::decode_vc::<PublicDidVC>(&vcs_details.vc_property)?;
+			// Create the did
+			Self::do_create_public_did(public_key, identifier, metadata.clone(), did_vc_property.registration_number.clone(), did_vc_property.company_name.clone())?;
 			// Emit an event.
 			Self::deposit_event(Event::DidCreated { did: identifier });
 
@@ -185,10 +201,9 @@ pub mod pallet {
 				public_key,
 				identifier,
 				metadata,
-				registration_number,
-				company_name,
+				did_vc_property.registration_number,
+				did_vc_property.company_name,
 			);
-
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
 		}
@@ -262,6 +277,15 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Function to check vc when trying to create dids
+		fn verify_did_vc(vcs_details: VC<T::Hash>, did_vc_type: VCType) -> bool {
+			if vcs_details.vc_type == did_vc_type && vcs_details.is_vc_active && !vcs_details.is_vc_used {
+				true
+			} else {
+				false
+			}
+		}
+
 		/// Function to check if did which is going to be created is valid or not
 		pub fn is_did_valid(identifier: Did) -> bool {
 			let did_colon: [u8; 4] = [100, 105, 100, 58];
