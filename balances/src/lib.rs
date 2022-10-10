@@ -239,13 +239,11 @@ impl Memo {
 		return !(self.0.len() > MAXIMUM_MEMO_LEN as usize)
 	}
 }
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-
 	#[pallet::config]
 	pub trait Config<I: 'static = ()>: frame_system::Config {
 		/// The balance of an account.
@@ -293,7 +291,6 @@ pub mod pallet {
 		/// Origin from which approvals must come.
 		type ApproveOrigin: EnsureOrigin<Self::Origin>;
 	}
-
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
