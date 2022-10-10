@@ -150,13 +150,13 @@ pub mod pallet {
 			// Ensure Signed
 			let _origin = ensure_signed(origin)?;
 			// Check if the VCId exists on chain
-			let vcs_details = T::VCResolution::get_vc(&vc_id);
-			ensure!(vcs_details == None, Error::<T>::VCIdDoesNotExist);
-			let vc = vcs_details.unwrap();
+			let vc_details = T::VCResolution::get_vc(&vc_id);
+			ensure!(vc_details == None, Error::<T>::VCIdDoesNotExist);
+			let vc_details = vc_details.unwrap();
 			// Verify if the vc is valid
-			ensure!(!Self::verify_did_vc(vc.clone(), VCType::PrivateDidVC), Error::<T>::InvalidVC);
+			ensure!(!Self::verify_did_vc(vc_details.clone(), VCType::PrivateDidVC), Error::<T>::InvalidVC);
 			// Decode the VC for getting the metadata and public key
-			let vc_property = T::VCResolution::decode_vc::<PrivateDidVC>(&vc.vc_property)?;
+			let vc_property = T::VCResolution::decode_vc::<PrivateDidVC>(&vc_details.vc_property)?;
 			// Create the did
 			Self::do_create_private_did(
 				vc_property.public_key, 
@@ -195,13 +195,13 @@ pub mod pallet {
 			// Ensure Signed
 			let _origin = ensure_signed(origin)?;
 			// Check if the VCId exists on chain
-			let vcs_details = T::VCResolution::get_vc(&vc_id);
-			ensure!(vcs_details == None, Error::<T>::VCIdDoesNotExist);
-			let vc = vcs_details.unwrap();
+			let vc_details = T::VCResolution::get_vc(&vc_id);
+			ensure!(vc_details == None, Error::<T>::VCIdDoesNotExist);
+			let vc_details = vc_details.unwrap();
 			// Verify if the vc is valid
-			ensure!(!Self::verify_did_vc(vc.clone(), VCType::PublicDidVC), Error::<T>::InvalidVC);
+			ensure!(!Self::verify_did_vc(vc_details.clone(), VCType::PublicDidVC), Error::<T>::InvalidVC);
 			// Decode the VC for getting the registration number and company name
-			let vc_property = T::VCResolution::decode_vc::<PublicDidVC>(&vc.vc_property)?;
+			let vc_property = T::VCResolution::decode_vc::<PublicDidVC>(&vc_details.vc_property)?;
 			// Create the did
 			Self::do_create_public_did(
 				vc_property.public_key, 
