@@ -30,19 +30,23 @@ use sp_core::H256;
 use sp_io;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-
 pub type AccountId = u64;
 pub struct DidResolution;
 impl DidResolve<AccountId> for DidResolution {
 	/// return if an accountId is mapped to a DID
-  fn did_exists(x: &AccountId) -> bool {
-		true
-	}
-  /// convert accountId to DID
-  fn get_account_id(k: &AccountId) -> Option<Did> {
-		Some(*b"did:ssid:swn/0/0/0/0/0/0/0/0/0/0")
+    fn did_exists(_: MultiAddress<AccountId>) -> bool {
+        true
+    }
+	/// convert DID to accountId
+    fn get_account_id(_: &[u8; 32]) -> Option<AccountId> {
+        None
+    }
+	/// convert accountid to DID
+	fn get_did(k: &AccountId) -> Option<[u8; 32]> {
+	    Some(*b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
 	}
 }
 
@@ -104,12 +108,13 @@ impl Config for Test {
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore =
-		StorageMapShim<super::Account<Test>, system::Provider<Test>, u64, super::AccountData<u64>>;
-	type MaxLocks = ConstU32<50>;
+	type AccountStore = StorageMapShim<super::Account<Test>, system::Provider<Test>, u64, super::AccountData<u64>>;
+	type MaxLocks = ();
 	type MaxReserves = ConstU32<2>;
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
+	type DidResolution = DidResolution;
+    type ApproveOrigin = frame_system::EnsureRoot<u64>;
 }
 
 pub struct ExtBuilder {

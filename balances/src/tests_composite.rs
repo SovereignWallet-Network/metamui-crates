@@ -31,6 +31,22 @@ use sp_io;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+pub type AccountId = u64;
+pub struct DidResolution;
+impl DidResolve<AccountId> for DidResolution {
+	/// return if an accountId is mapped to a DID
+    fn did_exists(_: MultiAddress<AccountId>) -> bool {
+        true
+    }
+	/// convert DID to accountId
+    fn get_account_id(_: &[u8; 32]) -> Option<AccountId> {
+        None
+    }
+	/// convert accountid to DID
+	fn get_did(k: &AccountId) -> Option<[u8; 32]> {
+	    Some(*b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
+	}
+}
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -95,7 +111,11 @@ impl Config for Test {
 	type MaxReserves = ConstU32<2>;
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
+	type DidResolution = DidResolution;
+    type ApproveOrigin = frame_system::EnsureRoot<u64>;
 }
+
+
 
 pub struct ExtBuilder {
 	existential_deposit: u64,
