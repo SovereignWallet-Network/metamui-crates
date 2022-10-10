@@ -143,27 +143,33 @@ pub mod pallet {
 		/// metadata - optional metadata to the DID - meant for bank nodes to display URL
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn create_private(
-			_origin: OriginFor<T>,
-			public_key: PublicKey,
+			origin: OriginFor<T>,
 			vc_id: VCid,
 			identifier: Did,
-			metadata: Metadata,
 		) -> DispatchResult {
+			// Ensure Signed
+			let _origin = ensure_signed(origin)?;
 			// Check if the VCId exists on chain
-			let vcs_details_option = T::VCResolution::get_vc(&vc_id);
-			ensure!(vcs_details_option == None, Error::<T>::VCIdDoesNotExist);
-			let vcs_details = vcs_details_option.unwrap();
+			let vcs_details = T::VCResolution::get_vc(&vc_id);
+			ensure!(vcs_details == None, Error::<T>::VCIdDoesNotExist);
+			let vc = vcs_details.unwrap();
 			// Verify if the vc is valid
-			ensure!(!Self::verify_did_vc(vcs_details, VCType::PrivateDidVC), Error::<T>::InvalidVC);
+			ensure!(!Self::verify_did_vc(vc.clone(), VCType::PrivateDidVC), Error::<T>::InvalidVC);
+			// Decode the VC for getting the metadata and public key
+			let vc_property = T::VCResolution::decode_vc::<PrivateDidVC>(&vc.vc_property)?;
 			// Create the did
-			Self::do_create_private_did(public_key, identifier, metadata.clone())?;
+			Self::do_create_private_did(
+				vc_property.public_key, 
+				identifier, 
+				vc_property.metadata.clone()
+			)?;
 			// Emit an event.
 			Self::deposit_event(Event::DidCreated { did: identifier });
 
 			T::OnDidUpdate::on_new_private_did(
-				public_key,
+				vc_property.public_key,
 				identifier,
-				metadata,
+				vc_property.metadata,
 			);
 
 			// Set the vc to used
@@ -182,31 +188,37 @@ pub mod pallet {
 		/// company_name - Company Name
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn create_public(
-			_origin: OriginFor<T>,
-			public_key: PublicKey,
+			origin: OriginFor<T>,
 			vc_id: VCid,
 			identifier: Did,
-			metadata: Metadata,
-			// registration_number: RegistrationNumber,
-			// company_name: CompanyName,
 		) -> DispatchResult {
+			// Ensure Signed
+			let _origin = ensure_signed(origin)?;
+			// Check if the VCId exists on chain
+			let vcs_details = T::VCResolution::get_vc(&vc_id);
+			ensure!(vcs_details == None, Error::<T>::VCIdDoesNotExist);
+			let vc = vcs_details.unwrap();
 			// Verify if the vc is valid
-			let vcs_details_option = T::VCResolution::get_vc(&vc_id);
-			ensure!(vcs_details_option == None, Error::<T>::VCIdDoesNotExist);
-			let vcs_details = vcs_details_option.unwrap();
+			ensure!(!Self::verify_did_vc(vc.clone(), VCType::PublicDidVC), Error::<T>::InvalidVC);
 			// Decode the VC for getting the registration number and company name
-			let did_vc_property = T::VCResolution::decode_vc::<PublicDidVC>(&vcs_details.vc_property)?;
+			let vc_property = T::VCResolution::decode_vc::<PublicDidVC>(&vc.vc_property)?;
 			// Create the did
-			Self::do_create_public_did(public_key, identifier, metadata.clone(), did_vc_property.registration_number.clone(), did_vc_property.company_name.clone())?;
+			Self::do_create_public_did(
+				vc_property.public_key, 
+				identifier, 
+				vc_property.metadata.clone(),
+				vc_property.registration_number.clone(), 
+				vc_property.company_name.clone()
+			)?;
 			// Emit an event.
 			Self::deposit_event(Event::DidCreated { did: identifier });
 
 			T::OnDidUpdate::on_new_public_did(
-				public_key,
+				vc_property.public_key,
 				identifier,
-				metadata,
-				did_vc_property.registration_number,
-				did_vc_property.company_name,
+				vc_property.metadata,
+				vc_property.registration_number,
+				vc_property.company_name,
 			);
 
 			// Set the vc to used
