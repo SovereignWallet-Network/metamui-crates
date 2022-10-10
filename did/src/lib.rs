@@ -148,7 +148,7 @@ pub mod pallet {
 			identifier: Did,
 		) -> DispatchResult {
 			// Ensure Signed
-			let _origin = ensure_signed(origin)?;
+			let _ = ensure_signed(origin)?;
 			// Check if the VCId exists on chain
 			let vc_details = T::VCResolution::get_vc(&vc_id);
 			ensure!(vc_details == None, Error::<T>::VCIdDoesNotExist);
@@ -193,7 +193,7 @@ pub mod pallet {
 			identifier: Did,
 		) -> DispatchResult {
 			// Ensure Signed
-			let _origin = ensure_signed(origin)?;
+			let _ = ensure_signed(origin)?;
 			// Check if the VCId exists on chain
 			let vc_details = T::VCResolution::get_vc(&vc_id);
 			ensure!(vc_details == None, Error::<T>::VCIdDoesNotExist);
