@@ -161,11 +161,6 @@ mod tests_local;
 pub mod weights;
 pub use self::imbalances::{NegativeImbalance, PositiveImbalance};
 use codec::{Codec, Decode, Encode, MaxEncodedLen};
-use metamui_primitives::{
-	traits::{DidResolve, MultiAddress},
-	Did,
-};
-
 #[cfg(feature = "std")]
 use frame_support::traits::GenesisBuild;
 use frame_support::{
@@ -181,6 +176,10 @@ use frame_support::{
 	WeakBoundedVec,
 };
 use frame_system as system;
+use metamui_primitives::{
+	traits::{DidResolve, MultiAddress},
+	Did,
+};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -192,7 +191,6 @@ use sp_runtime::{
 };
 use sp_std::{cmp, fmt::Debug, mem, ops::BitOr, prelude::*, result};
 pub use weights::WeightInfo;
-
 /// Type for leaving a note when sending a transaction.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Debug, TypeInfo)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

@@ -35,16 +35,16 @@ pub type AccountId = u64;
 pub struct DidResolution;
 impl DidResolve<AccountId> for DidResolution {
 	/// return if an accountId is mapped to a DID
-    fn did_exists(_: MultiAddress<AccountId>) -> bool {
-        true
-    }
+	fn did_exists(_: MultiAddress<AccountId>) -> bool {
+		true
+	}
 	/// convert DID to accountId
-    fn get_account_id(_: &[u8; 32]) -> Option<AccountId> {
-        None
-    }
+	fn get_account_id(_: &[u8; 32]) -> Option<AccountId> {
+		None
+	}
 	/// convert accountid to DID
-	fn get_did(k: &AccountId) -> Option<[u8; 32]> {
-	    Some(*b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
+	fn get_did(_k: &AccountId) -> Option<[u8; 32]> {
+		Some(*b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
 	}
 }
 
@@ -112,10 +112,8 @@ impl Config for Test {
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 	type DidResolution = DidResolution;
-    type ApproveOrigin = frame_system::EnsureRoot<u64>;
+	type ApproveOrigin = frame_system::EnsureRoot<u64>;
 }
-
-
 
 pub struct ExtBuilder {
 	existential_deposit: u64,
