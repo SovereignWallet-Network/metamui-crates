@@ -297,13 +297,9 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Function to check vc when trying to create dids
+		/// Function to validate vc when creating dids
 		fn verify_did_vc(vcs_details: VC<T::Hash>, did_vc_type: VCType) -> bool {
-			if vcs_details.vc_type == did_vc_type && vcs_details.is_vc_active && !vcs_details.is_vc_used {
-				true
-			} else {
-				false
-			}
+			vcs_details.vc_type == did_vc_type && vcs_details.is_vc_active && !vcs_details.is_vc_used
 		}
 
 		/// Function to check if did which is going to be created is valid or not
