@@ -165,6 +165,10 @@ pub mod pallet {
 				identifier,
 				metadata,
 			);
+
+			// Set the vc to used
+			T::VCResolution::set_is_vc_used(&vc_id, true);
+
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
 		}
@@ -204,6 +208,10 @@ pub mod pallet {
 				did_vc_property.registration_number,
 				did_vc_property.company_name,
 			);
+
+			// Set the vc to used
+			T::VCResolution::set_is_vc_used(&vc_id, true);
+
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
 		}
