@@ -11,8 +11,6 @@ pub use pallet::*;
 pub use serde;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-// #[cfg(test)]
-// mod tests;
 pub mod types;
 
 mod impls;
