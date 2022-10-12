@@ -46,9 +46,8 @@ fn test_add_invalid_priavte_did() {
 
 		assert_ok!(Did::create_private(
 			Origin::signed(VALIDATOR_ACCOUNT),
-			public_key,
+			vc_id,
 			identifier,
-			metadata
 		));
 	})
 }
@@ -127,13 +126,12 @@ fn test_add_private_did() {
 		let identifier = *b"did:ssid:Bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 		let public_key = sr25519::Public([2; 32]);
 		let metadata: types::Metadata = "metadata".as_bytes().to_vec().try_into().unwrap();
-		
+		let vc_id= *b"vc:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 
 		assert_ok!(Did::create_private(
 			Origin::signed(VALIDATOR_ACCOUNT),
-			public_key,
+			vc_id,
 			identifier,
-			metadata.clone(),
 		));
 
 		assert_eq!(DIDs::<Test>::contains_key(identifier.clone()), true);

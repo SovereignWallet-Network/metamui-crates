@@ -1,18 +1,36 @@
 use crate as pallet_did;
-
 use crate::types::*;
+use codec::Decode;
 use frame_support::{
 	traits::{ GenesisBuild, ConstU16, ConstU32, ConstU64, OnInitialize, OnFinalize },
 };
-
+use metamui_primitives::{VCid, Hash,traits::VCResolve};
 use frame_system as system;
 use sp_core::{ sr25519, H256 };
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup}, DispatchError,
 };
+pub struct VCResolution;
+impl VCResolve<Hash> for VCResolution{
+	/// Get VC from VC Id
+    fn get_vc(_vc_id: &VCid) -> Option<VC<Hash>> {
+        None
+    }
+    /// Get if VC is used
+    fn is_vc_used(_vc_id: &VCid) -> bool {
+        true
+    }
+    /// Set VC used
+    fn set_is_vc_used(_vc_id: &VCid, _is_vc_used: bool) {
+        ()
+    }
+    /// Decode VC
+    fn decode_vc<E: Decode>(_vc_bytes: &[u8]) -> Result<E, DispatchError> {
+        Err("Not Implemented".into())
+    }
+}
 use system::EnsureSigned;
-
 pub const VALIDATOR_ACCOUNT: u64 = 0;
 pub const NON_VALIDATOR_ACCOUNT: u64 = 2;
 pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:Alice\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
@@ -21,7 +39,7 @@ pub const VALIDATOR_PUBKEY: sr25519::Public = sr25519::Public([0; 32]);
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-// Configure a mock runtime to test the pallet.
+// Configure a mock runtime to test the xpallet.
 frame_support::construct_runtime!(
 	pub enum Test where
 		Block = Block,
@@ -65,6 +83,7 @@ impl pallet_did::Config for Test {
 	type ValidatorOrigin = EnsureSigned<Self::AccountId>;
 	type MaxKeyChanges = ConstU32<16>;
 	type OnDidUpdate = ();
+	type VCResolution = VCResolution;
 }
 
 // Build genesis storage according to the mock runtime.

@@ -267,7 +267,6 @@ pub mod pallet {
 				identifier,
 				public_key,
 			);
-
 			Ok(())
 		}
 
