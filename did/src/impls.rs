@@ -1,7 +1,6 @@
 use super::pallet::*;
 use crate::types::*;
 use codec::{Codec};
-use cumulus_primitives_core::ParaId;
 use metamui_primitives::traits::{MultiAddress, DidResolve};
 use sp_runtime::traits::{LookupError, StaticLookup};
 use frame_support::pallet_prelude::DispatchResult;
@@ -54,7 +53,6 @@ where
 /// Implement update did
 impl<T: Config> UpdateDid for Pallet<T> {
   fn add_private_did(
-      para_id: ParaId,
       public_key: PublicKey,
       identifier: Did,
       metadata: Metadata,
@@ -69,7 +67,6 @@ impl<T: Config> UpdateDid for Pallet<T> {
   }
 
   fn add_public_did(
-      para_id: ParaId,
       public_key: PublicKey,
       identifier: Did,
       metadata: Metadata,

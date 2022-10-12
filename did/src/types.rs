@@ -40,14 +40,12 @@ pub enum DIDRegion {
 /// Trait to handle Did Crud operations
 pub trait UpdateDid {
   fn add_private_did(
-    para_id: ParaId,
     public_key: PublicKey,
     identifier: Did,
     metadata: Metadata,
   ) -> DispatchResult;
 
   fn add_public_did(
-    para_id: ParaId,
     public_key: PublicKey,
     identifier: Did,
     metadata: Metadata,
@@ -70,7 +68,6 @@ pub trait UpdateDid {
 
 impl UpdateDid for () {
   fn add_private_did(
-      _: ParaId,
       _: PublicKey,
       _: Did,
       _: Metadata,
@@ -79,7 +76,6 @@ impl UpdateDid for () {
   }
 
   fn add_public_did(
-      _: ParaId,
       _: PublicKey,
       _: Did,
       _: Metadata,
@@ -112,12 +108,14 @@ impl UpdateDid for () {
 /// Trait for type that can handle changes to Dids.
 pub trait DidUpdated {
   fn on_new_private_did(
+      para_id: ParaId,
       public_key: PublicKey,
       identifier: Did,
       metadata: Metadata,
   );
 
   fn on_new_public_did(
+      para_id: ParaId,
       public_key: PublicKey,
       identifier: Did,
       metadata: Metadata,
@@ -125,14 +123,19 @@ pub trait DidUpdated {
       company_name: CompanyName,
   );
 
-  fn on_did_removal(identifier: Did);
+  fn on_did_removal(
+    para_id: ParaId,
+    identifier: Did,
+  );
 
   fn on_key_rotation(
+      para_id: ParaId,
       identifier: Did,
       public_key: PublicKey,
   );
 
   fn on_metadata_updation(
+      para_id: ParaId,
       identifier: Did,
       metadata: Metadata,
   );
@@ -140,6 +143,7 @@ pub trait DidUpdated {
 
 impl DidUpdated for () {
   fn on_new_private_did(
+      _: ParaId,
       _: PublicKey,
       _: Did,
       _: Metadata,
@@ -148,6 +152,7 @@ impl DidUpdated for () {
   }
 
   fn on_new_public_did(
+      _: ParaId,
       _: PublicKey,
       _: Did,
       _: Metadata,
@@ -157,11 +162,15 @@ impl DidUpdated for () {
     ()
   }
 
-  fn on_did_removal(_: Did) {
+  fn on_did_removal(
+    _: ParaId,
+    _: Did,
+  ) {
     ()
   }
 
   fn on_key_rotation(
+      _: ParaId,
       _: Did,
       _: PublicKey,
   ) {
@@ -169,6 +178,7 @@ impl DidUpdated for () {
   }
 
   fn on_metadata_updation(
+      _: ParaId,
       _: Did,
       _: Metadata,
   ) {

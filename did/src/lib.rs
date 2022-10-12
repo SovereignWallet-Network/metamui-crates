@@ -23,6 +23,7 @@ pub mod pallet {
 	use frame_system::{ self, pallet_prelude::*} ;
 	use sp_std::vec::Vec;
 	use crate::types::*;
+	use cumulus_primitives_core::ParaId;
 
 	use metamui_primitives::{ VCid, types::PublicDidVC, traits::VCResolve, };
 
@@ -140,6 +141,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			vc_id: VCid,
 			identifier: Did,
+			para_id: Option<ParaId>,
 		) -> DispatchResult {
 			// Ensure Signed
 			ensure_signed(origin)?;
@@ -171,11 +173,14 @@ pub mod pallet {
 			// Emit an event.
 			Self::deposit_event(Event::DidCreated { did: identifier });
 
-			T::OnDidUpdate::on_new_private_did(
-				vc_property.public_key,
-				identifier,
-				vc_property.metadata,
-			);
+			if let Some(para_id) = para_id {
+				T::OnDidUpdate::on_new_private_did(
+					para_id,
+					vc_property.public_key,
+					identifier,
+					vc_property.metadata,
+				);
+			}
 
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
@@ -193,6 +198,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			vc_id: VCid,
 			identifier: Did,
+			para_id: Option<ParaId>,
 		) -> DispatchResult {
 			// Ensure Signed
 			ensure_signed(origin)?;
@@ -226,13 +232,17 @@ pub mod pallet {
 			// Emit an event.
 			Self::deposit_event(Event::DidCreated { did: identifier });
 
-			T::OnDidUpdate::on_new_public_did(
-				vc_property.public_key,
-				identifier,
-				vc_property.metadata,
-				vc_property.registration_number,
-				vc_property.company_name,
-			);
+
+			if let Some(para_id) = para_id {
+				T::OnDidUpdate::on_new_public_did(
+					para_id,
+					vc_property.public_key,
+					identifier,
+					vc_property.metadata,
+					vc_property.registration_number,
+					vc_property.company_name,
+				);
+			}
 
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
@@ -241,7 +251,11 @@ pub mod pallet {
 		/// Removes a DID from chain storage, where
 		/// origin - the origin of the transaction
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn remove(origin: OriginFor<T>, identifier: Did) -> DispatchResult {
+		pub fn remove(
+			origin: OriginFor<T>,
+			identifier: Did,
+			para_id: Option<ParaId>,
+		) -> DispatchResult {
 			// Check if origin is a from a validator
 			ensure_root(origin)?;
 
@@ -250,9 +264,12 @@ pub mod pallet {
 			// deposit an event that the DID has been removed
 			Self::deposit_event(Event::DidRemoved{ did: identifier });
 
-			T::OnDidUpdate::on_did_removal(
-				identifier,
-			);
+			if let Some(para_id) = para_id {
+				T::OnDidUpdate::on_did_removal(
+					para_id,
+					identifier,
+				);
+			}
 
 			Ok(())
 		}
@@ -264,6 +281,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			identifier: Did,
 			public_key: PublicKey,
+			para_id: Option<ParaId>,
 		) -> DispatchResult {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
@@ -273,10 +291,13 @@ pub mod pallet {
 			// create key updated event
 			Self::deposit_event(Event::DidKeyUpdated{ did: identifier });
 
-			T::OnDidUpdate::on_key_rotation(
-				identifier,
-				public_key,
-			);
+			if let Some(para_id) = para_id {
+				T::OnDidUpdate::on_key_rotation(
+					para_id,
+					identifier,
+					public_key,
+				);
+			}
 
 			Ok(())
 		}
@@ -288,6 +309,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			identifier: Did,
 			metadata: Metadata,
+			para_id: Option<ParaId>,
 		) -> DispatchResult {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
@@ -297,10 +319,13 @@ pub mod pallet {
 			// create metadata updated event
 			Self::deposit_event(Event::DidMetadataUpdated{ did: identifier });
 
-			T::OnDidUpdate::on_metadata_updation(
-				identifier,
-				metadata,
-			);
+			if let Some(para_id) = para_id {
+				T::OnDidUpdate::on_metadata_updation(
+					para_id,
+					identifier,
+					metadata,
+				);
+			}
 
 			Ok(())
 		}
