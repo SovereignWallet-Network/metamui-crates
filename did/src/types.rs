@@ -3,7 +3,9 @@ use frame_support::{ pallet_prelude::DispatchResult };
 use scale_info::TypeInfo;
 pub use metamui_primitives::Did;
 pub use metamui_primitives::types::*;
-use cumulus_primitives_core::ParaId;
+use primitives::v2::{Id as ParaId};
+
+pub type Region = [u8; 16];
 
 #[derive(Decode, Encode, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

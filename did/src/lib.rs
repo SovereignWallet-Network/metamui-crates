@@ -47,6 +47,16 @@ pub mod pallet {
 
 	// the map for storing did information
 	#[pallet::storage]
+	pub type AllowedRegion<T: Config> =
+		StorageValue<_, Region, OptionQuery>;
+
+	// the map for storing did information
+	#[pallet::storage]
+	pub type DIDRegions<T: Config> =
+		StorageMap<_, Blake2_128Concat, Did, DIDRegion, OptionQuery>;
+
+	// the map for storing did information
+	#[pallet::storage]
 	pub type DIDs<T: Config> =
 		StorageMap<_, Blake2_128Concat, Did, (DIdentity, T::BlockNumber), OptionQuery>;
 
@@ -71,6 +81,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub initial_dids: Vec<DIdentity>,
+		pub allowed_region: Region,
 		pub phantom: PhantomData<T>,
 	}
 
@@ -79,6 +90,7 @@ pub mod pallet {
 		fn default() -> Self {
 			Self {
 				initial_dids: Default::default(),
+				allowed_region: Default::default(),
 				phantom: Default::default(),
 			}
 		}
@@ -87,7 +99,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			Pallet::<T>::initialize_dids(&self.initial_dids);
+			Pallet::<T>::initialize_dids(&self.initial_dids, &self.allowed_region);
 		}
 	}
 
@@ -165,6 +177,8 @@ pub mod pallet {
 				vc_property.metadata.clone()
 			)?;
 
+			DIDRegions::<T>::insert(identifier, DIDRegion::Local);
+
 			// Set the vc to used
 			T::VCResolution::set_is_vc_used(&vc_id, true);
 
@@ -219,6 +233,8 @@ pub mod pallet {
 				vc_property.registration_number.clone(), 
 				vc_property.company_name.clone()
 			)?;
+
+			DIDRegions::<T>::insert(identifier, DIDRegion::Local);
 
 			// Set the vc to used
 			T::VCResolution::set_is_vc_used(&vc_id, true);
@@ -359,7 +375,7 @@ pub mod pallet {
 		}
 
 		/// Initialize did during genesis
-		fn initialize_dids(dids: &Vec<DIdentity>) {
+		fn initialize_dids(dids: &Vec<DIdentity>, region: &Region) {
 			for did in dids.iter() {
 				// This is called only in genesis, hence 0
 				let block_no: T::BlockNumber = 0u32.into();
@@ -412,6 +428,7 @@ pub mod pallet {
 					identifier,
 				);
 			}
+			AllowedRegion::<T>::set(Some(*region));
 		}
 
 		pub fn can_add_did(

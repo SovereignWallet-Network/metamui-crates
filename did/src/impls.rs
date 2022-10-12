@@ -1,10 +1,10 @@
 use super::pallet::*;
 use crate::types::*;
 use codec::{Codec};
-use cumulus_primitives_core::ParaId;
-use metamui_primitives::traits::{MultiAddress, DidResolve};
-use sp_runtime::traits::{LookupError, StaticLookup};
+use primitives::v2::{Id as ParaId};
 use frame_support::pallet_prelude::DispatchResult;
+use sp_runtime::traits::{LookupError, StaticLookup};
+use metamui_primitives::traits::{MultiAddress, DidResolve};
 
 impl<T: Config> DidResolve<T::AccountId> for Pallet<T> {
 
@@ -65,6 +65,8 @@ impl<T: Config> UpdateDid for Pallet<T> {
     // Insert Did
     Self::do_create_private_did(public_key, identifier, metadata)?;
 
+    DIDRegions::<T>::insert(identifier, DIDRegion::Tokenchain(para_id));
+
     Ok(())
   }
 
@@ -80,6 +82,8 @@ impl<T: Config> UpdateDid for Pallet<T> {
     Self::can_add_did(public_key, identifier)?;
 
     Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name)?;
+
+    DIDRegions::<T>::insert(identifier, DIDRegion::Tokenchain(para_id));
     
     Ok(())
   }

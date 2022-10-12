@@ -27,6 +27,7 @@ frame-benchmarking = { default-features = false, version = "4.0.0-dev", git = "h
 
 # Cumulus
 cumulus-primitives-core = { default-features = false, git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26" }
+primitives = { package = "polkadot-primitives", git = "https://github.com/paritytech/polkadot", tag = "v0.9.26", default-features = false }
 
 # Metamui
 metamui-primitives = { default-features = false, path = '../metamui-primitives', version = '0.0.1' }
@@ -38,6 +39,7 @@ std = [
 	"codec/std",
 	"sp-std/std",
 	"scale-info/std",
+	"primitives/std",
 	"frame-support/std",
 	"frame-system/std",
 	"frame-benchmarking/std",

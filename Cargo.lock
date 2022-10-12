@@ -379,9 +379,9 @@ source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.26#be9e
 dependencies = [
  "frame-support",
  "parity-scale-codec",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-core-primitives 0.9.26 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.26)",
+ "polkadot-parachain 0.9.26 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.26)",
+ "polkadot-primitives 0.9.26 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.26)",
  "sp-api",
  "sp-runtime",
  "sp-std",
@@ -1453,6 +1453,7 @@ dependencies = [
  "frame-system",
  "metamui-primitives",
  "parity-scale-codec",
+ "polkadot-primitives 0.9.26 (git+https://github.com/paritytech/polkadot?tag=v0.9.26)",
  "scale-info",
  "serde",
  "sp-core",
@@ -1688,11 +1689,41 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "polkadot-core-primitives"
 version = "0.9.26"
+source = "git+https://github.com/paritytech/polkadot?tag=v0.9.26#d8785970175dce344f2a6ad1cd88297529a6dd59"
+dependencies = [
+ "parity-scale-codec",
+ "parity-util-mem",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "polkadot-core-primitives"
+version = "0.9.26"
 source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.26#d8785970175dce344f2a6ad1cd88297529a6dd59"
 dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
  "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "polkadot-parachain"
+version = "0.9.26"
+source = "git+https://github.com/paritytech/polkadot?tag=v0.9.26#d8785970175dce344f2a6ad1cd88297529a6dd59"
+dependencies = [
+ "derive_more",
+ "frame-support",
+ "parity-scale-codec",
+ "parity-util-mem",
+ "polkadot-core-primitives 0.9.26 (git+https://github.com/paritytech/polkadot?tag=v0.9.26)",
+ "scale-info",
+ "serde",
  "sp-core",
  "sp-runtime",
  "sp-std",
@@ -1707,12 +1738,42 @@ dependencies = [
  "frame-support",
  "parity-scale-codec",
  "parity-util-mem",
- "polkadot-core-primitives",
+ "polkadot-core-primitives 0.9.26 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.26)",
  "scale-info",
  "serde",
  "sp-core",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "polkadot-primitives"
+version = "0.9.26"
+source = "git+https://github.com/paritytech/polkadot?tag=v0.9.26#d8785970175dce344f2a6ad1cd88297529a6dd59"
+dependencies = [
+ "bitvec",
+ "frame-system",
+ "hex-literal",
+ "parity-scale-codec",
+ "parity-util-mem",
+ "polkadot-core-primitives 0.9.26 (git+https://github.com/paritytech/polkadot?tag=v0.9.26)",
+ "polkadot-parachain 0.9.26 (git+https://github.com/paritytech/polkadot?tag=v0.9.26)",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-arithmetic",
+ "sp-authority-discovery",
+ "sp-consensus-slots",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+ "sp-trie",
+ "sp-version",
 ]
 
 [[package]]
@@ -1725,8 +1786,8 @@ dependencies = [
  "hex-literal",
  "parity-scale-codec",
  "parity-util-mem",
- "polkadot-core-primitives",
- "polkadot-parachain",
+ "polkadot-core-primitives 0.9.26 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.26)",
+ "polkadot-parachain 0.9.26 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.26)",
  "scale-info",
  "serde",
  "sp-api",
