@@ -1,6 +1,7 @@
 use super::pallet::*;
 use crate::types::*;
 use codec::{Codec};
+use cumulus_primitives_core::ParaId;
 use metamui_primitives::traits::{MultiAddress, DidResolve};
 use sp_runtime::traits::{LookupError, StaticLookup};
 use frame_support::pallet_prelude::DispatchResult;
@@ -52,39 +53,52 @@ where
 
 /// Implement update did
 impl<T: Config> UpdateDid for Pallet<T> {
-	fn add_private_did(
-			public_key: PublicKey,
-			identifier: Did,
-			metadata: Metadata,
-	) -> DispatchResult {
-    Self::do_create_private_did(public_key, identifier, metadata)
-  }
-
-	fn add_public_did(
+  fn add_private_did(
+      para_id: ParaId,
       public_key: PublicKey,
-			identifier: Did,
-			metadata: Metadata,
-			registration_number: RegistrationNumber,
-			company_name: CompanyName,
-	) -> DispatchResult {
-    Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name)
+      identifier: Did,
+      metadata: Metadata,
+  ) -> DispatchResult {
+    // Validate did
+    Self::can_add_did(public_key, identifier)?;
+
+    // Insert Did
+    Self::do_create_private_did(public_key, identifier, metadata)?;
+
+    Ok(())
   }
 
-	fn remove_did(identifier: Did) -> DispatchResult {
+  fn add_public_did(
+      para_id: ParaId,
+      public_key: PublicKey,
+      identifier: Did,
+      metadata: Metadata,
+      registration_number: RegistrationNumber,
+      company_name: CompanyName,
+  ) -> DispatchResult {
+    // Validate did
+    Self::can_add_did(public_key, identifier)?;
+
+    Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name)?;
+    
+    Ok(())
+  }
+
+  fn remove_did(identifier: Did) -> DispatchResult {
     Self::do_remove(&identifier)
   }
 
-	fn rotate_key(
+  fn rotate_key(
       identifier: Did,
-			public_key: PublicKey,
-	) -> DispatchResult {
+      public_key: PublicKey,
+  ) -> DispatchResult {
     Self::do_rotate_key(&identifier, &public_key)
   }
 
-	fn update_metadata(
+  fn update_metadata(
       identifier: Did,
-			metadata: Metadata,
-	) -> DispatchResult {
+      metadata: Metadata,
+  ) -> DispatchResult {
     Self::do_update_metadata(&identifier, &metadata)
   }
 }

@@ -19,11 +19,11 @@ fn test_genesis_worked() {
 
 		let (did_doc, block_number) = Did::get_did_details(VALIDATOR_DID.clone()).unwrap();
 		match did_doc {
-			DIDType::Public(public_did) => {
+			DIdentity::Public(public_did) => {
 				assert_eq!(public_did.identifier, VALIDATOR_DID);
 		    assert_eq!(public_did.public_key, VALIDATOR_PUBKEY);
 			},
-			DIDType::Private(private_did) => {
+			DIdentity::Private(private_did) => {
 				assert_eq!(private_did.identifier, VALIDATOR_DID);
 		    assert_eq!(private_did.public_key, VALIDATOR_PUBKEY);
 			},
@@ -145,7 +145,7 @@ fn test_add_private_did() {
 
 		let (did_doc, _block_number) = Did::get_did_details(identifier.clone()).unwrap();
 		match did_doc {
-			types::DIDType::Private(private_did) => {
+			types::DIdentity::Private(private_did) => {
 				assert_eq!(private_did.identifier, identifier);
 				assert_eq!(private_did.public_key, public_key);
 				assert_eq!(private_did.metadata, metadata);
@@ -189,7 +189,7 @@ fn test_add_public_did() {
 
 		let (did_doc, _block_number) = Did::get_did_details(identifier.clone()).unwrap();
 		match did_doc {
-			types::DIDType::Public(public_did) => {
+			types::DIdentity::Public(public_did) => {
 				assert_eq!(public_did.identifier, identifier);
 				assert_eq!(public_did.public_key, public_key);
 				assert_eq!(public_did.metadata, metadata);
@@ -440,7 +440,7 @@ fn test_rotate_key_private() {
 
 		let (did_doc, block_number) = Did::get_did_details(identifier.clone()).unwrap();
 		match did_doc {
-			types::DIDType::Private(private_did) => {
+			types::DIdentity::Private(private_did) => {
 				assert_eq!(private_did.identifier, identifier);
 				assert_eq!(private_did.public_key, public_key2);
 				assert_eq!(private_did.metadata, metadata);
@@ -505,7 +505,7 @@ fn test_rotate_key_public() {
 
 		let (did_doc, block_number) = Did::get_did_details(identifier.clone()).unwrap();
 		match did_doc {
-			types::DIDType::Public(public_did) => {
+			types::DIdentity::Public(public_did) => {
 				assert_eq!(public_did.identifier, identifier);
 				assert_eq!(public_did.public_key, public_key2);
 				assert_eq!(public_did.metadata, metadata);
@@ -580,7 +580,7 @@ fn test_rotate_key_history_private_did() {
 
 		let (did_doc, block_number) = Did::get_did_details(identifier.clone()).unwrap();
 		match did_doc {
-			types::DIDType::Private(private_did) => {
+			types::DIdentity::Private(private_did) => {
 				assert_eq!(private_did.identifier, identifier);
 				assert_eq!(private_did.public_key, public_key3);
 				assert_eq!(private_did.metadata, metadata);
@@ -664,7 +664,7 @@ fn test_rotate_key_history_public_did() {
 
 		let (did_doc, block_number) = Did::get_did_details(identifier.clone()).unwrap();
 		match did_doc {
-			types::DIDType::Public(public_did) => {
+			types::DIdentity::Public(public_did) => {
 				assert_eq!(public_did.identifier, identifier);
 				assert_eq!(public_did.public_key, public_key3);
 				assert_eq!(public_did.metadata, metadata);
@@ -778,7 +778,7 @@ fn test_metadata_updation_private() {
 		let (did_doc, _block_number) = Did::get_did_details(identifier.clone()).unwrap();
 
 		match did_doc {
-			types::DIDType::Private(private_did) => {
+			types::DIdentity::Private(private_did) => {
 				//check if the details are same as the ones we added above
 				assert_eq!(private_did.identifier, identifier);
 				assert_eq!(private_did.public_key, public_key);
@@ -827,7 +827,7 @@ fn test_metadata_updation_public() {
 		let (did_doc, _block_number) = Did::get_did_details(identifier.clone()).unwrap();
 
 		match did_doc {
-			types::DIDType::Public(public_did) => {
+			types::DIdentity::Public(public_did) => {
 				assert_eq!(public_did.identifier, identifier);
 				assert_eq!(public_did.public_key, public_key);
 				assert_eq!(public_did.metadata, new_metadata);
@@ -892,7 +892,7 @@ fn test_get_private_did_details() {
 		let (did_doc, _block_number) = Did::get_did_details(identifier.clone()).unwrap();
 
 		match did_doc {
-			types::DIDType::Private(private_did) => {
+			types::DIdentity::Private(private_did) => {
 				//check if the details are same as the ones we added above
 				assert_eq!(private_did.identifier, identifier);
 				assert_eq!(private_did.public_key, public_key);
@@ -927,7 +927,7 @@ fn test_get_public_did_details() {
 		let (did_doc, _block_number) = Did::get_did_details(identifier.clone()).unwrap();
 
 		match did_doc {
-			types::DIDType::Public(public_did) => {
+			types::DIdentity::Public(public_did) => {
 				//check if the details are same as the ones we added above
 				assert_eq!(public_did.identifier, identifier);
 				assert_eq!(public_did.public_key, public_key);
