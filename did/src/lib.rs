@@ -11,6 +11,7 @@ pub use pallet::*;
 pub use serde;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+
 pub mod types;
 
 mod impls;
@@ -91,7 +92,6 @@ pub mod pallet {
 		}
 	}
 
-
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -134,11 +134,9 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	impl<T: Config> Pallet<T> {
 		/// Adds a DID on chain, where
-		/// _origin - the origin of the transaction
-		/// public_key - public signing key of the DID
+		/// origin - the origin of the transaction
 		/// vc_id - The id of the VC that is authorized to create this DID
 		/// identifier - public unique identifier for the DID
-		/// metadata - optional metadata to the DID - meant for bank nodes to display URL
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn create_private(
 			origin: OriginFor<T>,
@@ -179,11 +177,9 @@ pub mod pallet {
 
 		/// Adds a DID on chain, where
 		/// origin - the origin of the transaction
-		/// sign_key - public signing key of the DID
+		/// vc_id - The id of the VC that is authorized to create this DID
 		/// identifier - public unique identifier for the DID
-		/// metadata - optional metadata to the DID - meant for bank nodes to display URL
-		/// registration_number - Company registration number
-		/// company_name - Company Name
+
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn create_public(
 			origin: OriginFor<T>,
