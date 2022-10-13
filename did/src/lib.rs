@@ -81,7 +81,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub initial_dids: Vec<DIdentity>,
-		pub allowed_region: Region,
+		pub allowed_region: Option<Region>,
 		pub phantom: PhantomData<T>,
 	}
 
@@ -375,7 +375,7 @@ pub mod pallet {
 		}
 
 		/// Initialize did during genesis
-		fn initialize_dids(dids: &Vec<DIdentity>, region: &Region) {
+		fn initialize_dids(dids: &Vec<DIdentity>, region: &Option<Region>) {
 			for did in dids.iter() {
 				// This is called only in genesis, hence 0
 				let block_no: T::BlockNumber = 0u32.into();
@@ -428,7 +428,7 @@ pub mod pallet {
 					identifier,
 				);
 			}
-			AllowedRegion::<T>::set(Some(*region));
+			AllowedRegion::<T>::set(*region);
 		}
 
 		pub fn can_add_did(
@@ -438,6 +438,15 @@ pub mod pallet {
 
 			// ensure did is valid
 			ensure!(Self::is_did_valid(identifier.clone()), Error::<T>::InvalidDid);
+
+			// Check if the regional did is allowed
+			if let Some(allowed_region) = AllowedRegion::<T>::get() {
+				let region = Self::get_region(identifier);
+				let mut allowed_region = allowed_region.to_vec();
+				allowed_region.retain(|val| *val != 0);
+				ensure!(allowed_region == region, Error::<T>::InvalidDid);
+			}
+
 
 			// ensure did is not already taken
 			ensure!(!DIDs::<T>::contains_key(identifier.clone()), Error::<T>::DIDAlreadyExists);
@@ -648,6 +657,20 @@ pub mod pallet {
 			}
 
 			Ok(())
+		}
+
+		// Gets sub array between two colons
+		fn get_region(identifier: Did) -> Vec<u8> {
+			let colon = 58;
+			let index = identifier.iter()
+				.position(|&x| x == colon)
+				.unwrap();
+			let identifier = identifier.split_at(index).1;
+			let index = identifier.iter()
+				.position(|&x| x == colon)
+				.unwrap();
+			let region = identifier.split_at(index).0;
+			region.to_vec()
 		}
 	
 	}
