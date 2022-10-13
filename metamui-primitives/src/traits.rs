@@ -80,7 +80,7 @@ impl<AccountId: Default> Default for MultiAddress<AccountId> {
 /// Trait to get VC details
 pub trait VCResolve<Hash> {
     /// Get VC from VC Id
-    fn get_vc(vc_id: &VCid) -> Option<(VC<Hash>, VCStatus)>;
+    fn get_vc(vc_id: &VCid) -> Option<VC<Hash>>;
     /// Get if VC is used
     fn is_vc_used(vc_id: &VCid) -> bool;
     /// Set VC used
@@ -91,7 +91,7 @@ pub trait VCResolve<Hash> {
   
 impl<Hash> VCResolve<Hash> for () {
     /// Get VC from VC Id
-    fn get_vc(_vc_id: &VCid) -> Option<(VC<Hash>, VCStatus)> {
+    fn get_vc(_vc_id: &VCid) -> Option<VC<Hash>> {
         None
     }
     /// Get if VC is used
@@ -133,12 +133,12 @@ impl HasVCId for TokenTransferVC {
 /// Trait to check if a Did is a council member
 pub trait IsMember {
     /// Function to check council membership
-    fn is_member(_: &Did) -> bool;
+    fn is_collective_member(_: &Did) -> bool;
 }
 
 impl IsMember for () {
     /// Function to check council membership
-    fn is_member(_: &Did) -> bool{
+    fn is_collective_member(_: &Did) -> bool{
         false
     }
 }

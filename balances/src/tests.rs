@@ -15,7 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Macro for creating the tests for the module.A regular 
+//! Macro for creating the tests for the module.A regular
 
 #![cfg(test)]
 
@@ -363,6 +363,35 @@ macro_rules! decl_tests {
 		}
 
 		#[test]
+		#[should_panic]
+		fn balance_transfer_insufficient_balance() {
+			<$ext_builder>::default().build().execute_with(|| {
+				assert_ok!(Balances::transfer(Some(1).into(), 2, 69));
+			});
+		}
+
+
+
+		#[test]
+		fn balance_transfer_with_memo_works() {
+			<$ext_builder>::default().build().execute_with(|| {
+				let _ = Balances::deposit_creating(&1, 111);
+				assert_ok!(Balances::transfer_with_memo(Some(1).into(), 2, 69,Memo(vec![0,0,0])));
+				assert_eq!(Balances::total_balance(&1), 42);
+				assert_eq!(Balances::total_balance(&2), 69);
+			});
+		}
+
+		#[test]
+		#[should_panic]
+		fn balance_transfer_with_memo_fails_invalid_memo() {
+			<$ext_builder>::default().build().execute_with(|| {
+				let _ = Balances::deposit_creating(&1, 111);
+				assert_ok!(Balances::transfer_with_memo(Some(1).into(), 2, 69,Memo(vec![0; 129])));
+			});
+		}
+
+		#[test]
 		fn force_transfer_works() {
 			<$ext_builder>::default().build().execute_with(|| {
 				let _ = Balances::deposit_creating(&1, 111);
@@ -370,9 +399,63 @@ macro_rules! decl_tests {
 					Balances::force_transfer(Some(2).into(), 1, 2, 69),
 					BadOrigin,
 				);
-				assert_ok!(Balances::force_transfer(RawOrigin::Root.into(), 1, 2, 69));
+				assert_ok!(Balances::force_transfer(Origin::root().into(), 1, 2, 69));
 				assert_eq!(Balances::total_balance(&1), 42);
 				assert_eq!(Balances::total_balance(&2), 69);
+			});
+		}
+
+		#[test]
+		#[should_panic]
+		fn force_transfer_fails_insufficient_balance() {
+			<$ext_builder>::default().build().execute_with(|| {
+				let _ = Balances::deposit_creating(&1, 42);
+				assert_noop!(
+					Balances::force_transfer(Some(2).into(), 1, 2, 69),
+					BadOrigin,
+				);
+				assert_ok!(Balances::force_transfer(Origin::root().into(), 1, 2, 69));
+			});
+		}
+
+		#[test]
+		fn burn_balance_works() {
+			<$ext_builder>::default().build().execute_with(|| {
+				let _ = Balances::deposit_creating(&2, 111);
+				assert_noop!(
+					Balances::burn_balance(Some(1).into(), 2, 69),
+					BadOrigin,
+				);
+				assert_ok!(Balances::burn_balance(Origin::root().into(), 2, 69));
+				assert_eq!(Balances::total_balance(&2), 42);
+			});
+		}
+
+		#[test]
+		#[should_panic]
+		fn burn_balance_fails_lowbalance() {
+			<$ext_builder>::default().build().execute_with(|| {
+				let _ = Balances::deposit_creating(&2, 0);
+				assert_noop!(
+					Balances::burn_balance(Some(1).into(), 2, 69),
+					BadOrigin,
+				);
+				assert_ok!(Balances::burn_balance(Origin::root().into(), 2, 69));
+			});
+		}
+
+		#[test]
+		fn force_unreserve_balance_should_work() {
+			<$ext_builder>::default().build().execute_with(|| {
+				let _ = Balances::deposit_creating(&1, 111);
+				assert_ok!(Balances::reserve(&1, 111));
+				assert_noop!(
+					Balances::force_unreserve(Some(1).into(), 1, 42),
+					BadOrigin,
+				);
+				assert_ok!(Balances::force_unreserve(Origin::root().into(), 1, 42));
+				assert_eq!(Balances::reserved_balance(1), 69);
+				assert_eq!(Balances::free_balance(1), 42);
 			});
 		}
 
@@ -394,14 +477,12 @@ macro_rules! decl_tests {
 		}
 
 		#[test]
+		#[should_panic]
 		fn balance_transfer_when_reserved_should_not_work() {
 			<$ext_builder>::default().build().execute_with(|| {
 				let _ = Balances::deposit_creating(&1, 111);
 				assert_ok!(Balances::reserve(&1, 69));
-				assert_noop!(
-					Balances::transfer(Some(1).into(), 2, 69),
-					Error::<$test, _>::InsufficientBalance,
-				);
+				assert_ok!(Balances::transfer(Some(1).into(), 2, 69));
 			});
 		}
 
