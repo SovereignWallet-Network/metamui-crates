@@ -1,0 +1,51 @@
+[package]
+name = "pallet-token"
+authors = ["Metamui"]
+description = "Pallet for managing token"
+version = "0.0.1"
+license = "Unlicense"
+repository = "https://github.com/SovereignWallet-Network/metamui-tokenchain"
+edition = "2021"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+
+# Substrate
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+
+# Metamui
+metamui-primitives = { git = "https://github.com/SovereignWallet-Network/metamui-crates", branch = "main", default-features = false }
+
+[dev-dependencies]
+serde = { version = "1.0.132" }
+
+# Substrate
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+
+# MetaMUI
+pallet-balances = { default-features = false, path = "../balances", version = '0.0.1' }
+pallet-did = { default-features = false, path = "../did", version = '0.0.1' }
+
+[features]
+default = ["std"]
+
+std = [
+	"codec/std",
+	"scale-info/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system/std",
+	"pallet-balances/std",
+	"pallet-did/std",
+
+]
+runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+try-runtime = [ "frame-support/try-runtime" ]

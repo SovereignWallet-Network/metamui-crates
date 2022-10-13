@@ -2,17 +2,16 @@
 
 pub use pallet::*;
 
-#[cfg(test)]
-mod mock;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod mock;
+// #[cfg(test)]
+// mod tests;
 
 #[cfg(feature = "std")]
 pub use serde;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-// #[cfg(test)]
-// mod tests;
+
 pub mod types;
 
 mod impls;
