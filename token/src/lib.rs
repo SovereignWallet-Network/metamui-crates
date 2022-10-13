@@ -188,7 +188,8 @@ pub mod pallet {
 			let mint_vc: SlashMintTokens =
 				T::VCResolution::decode_vc::<SlashMintTokens>(&vc_struct.vc_property)?;
 			let amount: BalanceOf<T> = mint_vc.amount.try_into().ok().unwrap_or_default();
-			T::Currency::issue(amount);
+			let vc_owner = Self::get_vc_owner::<SlashMintTokens>(vc_struct)?;
+			T::Currency::deposit_creating(&vc_owner,amount);
 			// update vc's is_used flag as used
 			T::VCResolution::set_is_vc_used(&vc_id, true);
 			Self::deposit_event(Event::TokenMinted { balance: amount, vc_id });
