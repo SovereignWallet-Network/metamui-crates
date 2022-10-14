@@ -153,7 +153,7 @@ pub mod pallet {
 		#[pallet::weight(1)]
 		pub fn store(origin: OriginFor<T>, vc_hex: VCHex) -> DispatchResult {
 			// Extracting vc from encoded vc byte array
-			let vc: VC<T::Hash> = Self::decode_vc(&vc_hex)?;
+			let mut vc: VC<T::Hash> = Self::decode_vc(&vc_hex)?;
       
 			// Issuer’s Did validity will be checked in the set_approved_issuers() 
 			// Check if owner’s did is registered or not
@@ -194,6 +194,8 @@ pub mod pallet {
 		
 			// Generating vc_id from vc to emit in the event
 			let vc_id: VCid = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
+      // Setting is_vc_active to false
+      vc.is_vc_active = false;
 			// storing hash
 			Self::store_vc(vc.owner, vc, vc_id)?;
 			Self::deposit_event(Event::VCValidated{ vcid: vc_id });
@@ -391,9 +393,9 @@ impl<T: Config> Pallet<T> {
     } else {
       let mut verified_count: usize = 0;
       for issuer in vc.issuers.iter() {
-        let (issuer_did_type, _) = pallet_did::Pallet::<T>::get_did_details(*issuer)?;
+        let (issuer_did, _) = pallet_did::Pallet::<T>::get_did_details(*issuer)?;
 
-        let public_key = match issuer_did_type {  
+        let public_key = match issuer_did {  
           Private(private_did) => private_did.public_key,
           Public(public_did) => public_did.public_key,
         };
