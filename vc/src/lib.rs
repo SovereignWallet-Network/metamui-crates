@@ -109,7 +109,7 @@ use metamui_primitives::traits::MultiAddress;
 
   /// map to enable lookup from Did to VCids
 	#[pallet::storage]
-  pub(super) type Lookup<T: Config> = StorageMap<_, Blake2_128Concat, Did, Vec<VCid>, ValueQuery>;
+  pub type Lookup<T: Config> = StorageMap<_, Blake2_128Concat, Did, Vec<VCid>, ValueQuery>;
 
 	/// map to enable reverse lookup from VCid to Did
 	#[pallet::storage]

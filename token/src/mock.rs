@@ -2,16 +2,40 @@ use crate as pallet_token;
 use pallet_balances;
 use pallet_vc;
 use pallet_did;
+use codec::Decode;
 use frame_support::{parameter_types, traits::{Everything, ConstU32}, ord_parameter_types};
 use frame_system::{self as system, EnsureSignedBy};
 use sp_core::{H256};
 use sp_runtime::{
+    DispatchError,
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
 };
+
 use system::{EnsureSigned};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+use metamui_primitives::{Hash, VCid, types::VC as OtherVC, traits::VCResolve};
+pub struct VCResolution;
+impl VCResolve<Hash> for VCResolution {
+    /// Get VC from VC Id
+    fn get_vc(_vc_id: &VCid) -> Option<OtherVC<Hash>> {
+        None
+    }
+    /// Get if VC is used
+    fn is_vc_used(_vc_id: &VCid) -> bool {
+        true
+    }
+    /// Set VC used
+    fn set_is_vc_used(_vc_id: &VCid, _is_vc_used: bool) {
+        ()
+    }
+    /// Decode VC
+    fn decode_vc<E: Decode>(_vc_bytes: &[u8]) -> Result<E, DispatchError> {
+        Err("Not Implemented".into())
+    }
+}
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
     pub enum Test where
