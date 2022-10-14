@@ -107,20 +107,10 @@ impl UpdateDid for () {
 
 /// Trait for type that can handle changes to Dids.
 pub trait DidUpdated {
-  fn on_new_private_did(
+  fn on_new_did(
       para_id: ParaId,
       public_key: PublicKey,
       identifier: Did,
-      metadata: Metadata,
-  );
-
-  fn on_new_public_did(
-      para_id: ParaId,
-      public_key: PublicKey,
-      identifier: Did,
-      metadata: Metadata,
-      registration_number: RegistrationNumber,
-      company_name: CompanyName,
   );
 
   fn on_did_removal(
@@ -128,36 +118,18 @@ pub trait DidUpdated {
     identifier: Did,
   );
 
-  fn on_key_rotation(
-      para_id: ParaId,
-      identifier: Did,
-      public_key: PublicKey,
-  );
-
-  fn on_metadata_updation(
-      para_id: ParaId,
-      identifier: Did,
-      metadata: Metadata,
-  );
+  fn on_key_updation(
+    para_id: ParaId,
+    identifier: Did,
+    public_key: PublicKey,
+);
 }
 
 impl DidUpdated for () {
-  fn on_new_private_did(
+  fn on_new_did(
       _: ParaId,
       _: PublicKey,
       _: Did,
-      _: Metadata,
-  ) {
-    ()
-  }
-
-  fn on_new_public_did(
-      _: ParaId,
-      _: PublicKey,
-      _: Did,
-      _: Metadata,
-      _: RegistrationNumber,
-      _: CompanyName,
   ) {
     ()
   }
@@ -169,18 +141,10 @@ impl DidUpdated for () {
     ()
   }
 
-  fn on_key_rotation(
+  fn on_key_updation(
       _: ParaId,
       _: Did,
       _: PublicKey,
-  ) {
-    ()
-  }
-
-  fn on_metadata_updation(
-      _: ParaId,
-      _: Did,
-      _: Metadata,
   ) {
     ()
   }

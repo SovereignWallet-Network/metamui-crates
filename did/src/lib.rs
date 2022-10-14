@@ -104,6 +104,8 @@ pub mod pallet {
 		DidKeyUpdated { did: Did },
 		/// DID Metadata has been updated
 		DidMetadataUpdated { did: Did },
+		/// DID Metadata has been updated
+		DidSynced { did: Did, para_id: ParaId },
 	}
 
 	// Errors inform users that something went wrong.
@@ -174,11 +176,10 @@ pub mod pallet {
 			Self::deposit_event(Event::DidCreated { did: identifier });
 
 			if let Some(para_id) = para_id {
-				T::OnDidUpdate::on_new_private_did(
+				T::OnDidUpdate::on_new_did(
 					para_id,
 					vc_property.public_key,
 					identifier,
-					vc_property.metadata,
 				);
 			}
 
@@ -234,17 +235,33 @@ pub mod pallet {
 
 
 			if let Some(para_id) = para_id {
-				T::OnDidUpdate::on_new_public_did(
+				T::OnDidUpdate::on_new_did(
 					para_id,
 					vc_property.public_key,
 					identifier,
-					vc_property.metadata,
-					vc_property.registration_number,
-					vc_property.company_name,
 				);
 			}
 
 			// Return a successful DispatchResultWithPostInfo
+			Ok(())
+		}
+
+		/// Sync did from relay chain to parachain
+		/// origin - the origin of the transaction
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		pub fn sync_did(
+			origin: OriginFor<T>,
+			identifier: Did,
+			para_id: ParaId,
+		) -> DispatchResult {
+			// Check if origin is a from a validator
+			T::ValidatorOrigin::ensure_origin(origin)?;
+
+			Self::do_sync_did(&identifier, para_id)?;
+
+			// Emit an event.
+			Self::deposit_event(Event::DidSynced { did: identifier, para_id });
+
 			Ok(())
 		}
 
@@ -292,7 +309,7 @@ pub mod pallet {
 			Self::deposit_event(Event::DidKeyUpdated{ did: identifier });
 
 			if let Some(para_id) = para_id {
-				T::OnDidUpdate::on_key_rotation(
+				T::OnDidUpdate::on_key_updation(
 					para_id,
 					identifier,
 					public_key,
@@ -309,7 +326,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			identifier: Did,
 			metadata: Metadata,
-			para_id: Option<ParaId>,
 		) -> DispatchResult {
 			// Check if origin is a from a validator
 			T::ValidatorOrigin::ensure_origin(origin)?;
@@ -318,14 +334,6 @@ pub mod pallet {
 
 			// create metadata updated event
 			Self::deposit_event(Event::DidMetadataUpdated{ did: identifier });
-
-			if let Some(para_id) = para_id {
-				T::OnDidUpdate::on_metadata_updation(
-					para_id,
-					identifier,
-					metadata,
-				);
-			}
 
 			Ok(())
 		}
@@ -654,6 +662,24 @@ pub mod pallet {
 					));
 				},
 			}
+
+			Ok(())
+		}
+
+		pub fn do_sync_did(identifier: &Did, para_id: ParaId) -> DispatchResult {
+			
+			let (did_doc, _) = Self::get_did_details(identifier.clone())?;
+
+			let public_key = match did_doc {
+				DIdentity::Public(public_did) => public_did.public_key,
+				DIdentity::Private(private_did) => private_did.public_key,
+			};
+
+			T::OnDidUpdate::on_new_did(
+				para_id,
+				public_key,
+				*identifier,
+			);
 
 			Ok(())
 		}
