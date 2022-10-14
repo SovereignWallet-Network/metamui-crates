@@ -530,13 +530,4 @@ impl<T: Config> Pallet<T> {
     VCApproverList::<T>::insert(vc_id, vc_approver_list);
     Ok(())
   }
-
-  //Function to check if an Account is included in the council member list
-  pub fn is_caller_council_member(caller: &T::AccountId) -> bool {
-    let did_to_check_option = <T as pallet::Config>::DidResolution::get_did(caller);
-    match did_to_check_option{
-      Some(did_to_check) => {<T as pallet::Config>::IsValidator::is_collective_member(&did_to_check)}
-      None => {false}
-    }
-  }
 }
