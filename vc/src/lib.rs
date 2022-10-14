@@ -16,8 +16,8 @@ use sp_runtime::{
 };
 use metamui_primitives::{ 
   Did, VCid,
-  traits::{ DidResolve, IsMember },
-  types::{ VCType, VC, SlashMintTokens, TokenTransferVC }
+  traits::{ DidResolve, IsMember, MultiAddress },
+  types::{ VCType, VC, SlashMintTokens, TokenTransferVC, PublicDidVC, PrivateDidVC }
 };
 use sp_std::{ prelude::*, vec };
 use sr25519::Signature;
@@ -31,18 +31,12 @@ pub mod types;
 pub use crate::types::*;
 use serde_big_array::big_array;
 
-pub type VCHash = Vec<u8>;
-pub type PublicKey = sr25519::Public;
-pub type IsVCActive = bool;
-
 pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
   use super::*;
   use frame_support::pallet_prelude::*;
   use frame_system::pallet_prelude::*;
-use metamui_primitives::traits::MultiAddress;
-
   /// Configure the pallet by specifying the parameters and types on which it depends.
   #[pallet::config]
 	pub trait Config: frame_system::Config + pallet_did::Config {
@@ -93,8 +87,12 @@ use metamui_primitives::traits::MultiAddress;
     InvalidCurrencyCode,
     /// The caller is not a council member
     NotACouncilMember,
+    /// The caller is not a validator
+    NotAValidator,
     /// Did doesn't exist on chain
-    DidDoesNotExist
+    DidDoesNotExist,
+    /// Public key in the DidVC is already used
+    PublicKeyRegistered
 	}
 
 	#[pallet::pallet]
@@ -126,11 +124,34 @@ use metamui_primitives::traits::MultiAddress;
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
+  #[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub initial_vcs: Vec<InitialVCs>,
+		pub phantom: PhantomData<T>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self {
+				initial_vcs: Default::default(),
+				phantom: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			Pallet::<T>::initialize_vcs(&self.initial_vcs);
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Adds a member to the membership set
 		#[pallet::weight(1)]
-		pub fn store(origin: OriginFor<T>, vc_hex: VCHash) -> DispatchResult {
+		pub fn store(origin: OriginFor<T>, vc_hex: VCHex) -> DispatchResult {
 			// Extracting vc from encoded vc byte array
 			let vc: VC<T::Hash> = Self::decode_vc(&vc_hex)?;
       
@@ -144,7 +165,7 @@ use metamui_primitives::traits::MultiAddress;
 					<T as Config>::ApproveOrigin::ensure_origin(origin)?;
           Self::validate_currency_code(&vc)?;
 				}
-				VCType::SlashTokens | VCType::MintTokens | VCType::TokenTransferVC | VCType::PrivateDidVC | VCType::PublicDidVC => {
+				VCType::SlashTokens | VCType::MintTokens | VCType::TokenTransferVC => {
 					// Validating caller of above VC types
 					Self::validate_vcs(&vc)?;
 				}
@@ -157,7 +178,19 @@ use metamui_primitives::traits::MultiAddress;
 					// ensure the caller is a council member account
 					ensure!(<T as pallet::Config>::IsCouncilMember::is_collective_member(&sender_did.unwrap()), Error::<T>::NotACouncilMember);
 				}
-			}
+        VCType::PrivateDidVC | VCType::PublicDidVC => {
+          let sender = ensure_signed(origin)?;
+          // Check If Sender's Did Exists
+          let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
+          ensure!(sender_did == None, Error::<T>::DidDoesNotExist);
+
+          // ensure the caller is a council member account
+					ensure!(<T as pallet::Config>::IsValidator::is_collective_member(&sender_did.unwrap()), Error::<T>::NotAValidator);
+
+          // ensure the public key in the did_vc is not already mapped to another did on chain
+					Self::validate_vcs(&vc)?;
+        }
+      }
 		
 			// Generating vc_id from vc to emit in the event
 			let vc_id: VCid = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
@@ -207,6 +240,19 @@ use metamui_primitives::traits::MultiAddress;
 }
 
 impl<T: Config> Pallet<T> {
+  fn initialize_vcs(init_vcs: &Vec<InitialVCs>) {
+    for initial_vc in init_vcs.iter() {
+      let vc_id = &initial_vc.vc_id;
+      let vc_hex = &initial_vc.vc_hex;
+      
+      let vc = Self::decode_vc::<VC<T::Hash>>(&vc_hex).unwrap();
+
+      VCs::<T>::insert(vc_id.clone(), Some(vc.clone()));
+      Lookup::<T>::insert(vc.owner, vec![vc_id]);
+      RLookup::<T>::insert(vc_id, vc.owner);
+    }
+  }
+  
   /// Decoding VC from encoded bytes
   pub fn decode_vc<E: codec::Decode>(mut vc_bytes: &[u8]) -> Result<E, DispatchError> {
     let vc: E = match Decode::decode(&mut vc_bytes) {
@@ -273,7 +319,21 @@ impl<T: Config> Pallet<T> {
         );
       },
 
-      _ => (),
+      VCType::PrivateDidVC => {
+        let vc_property = Self::decode_vc::<PrivateDidVC>(&vc.vc_property)?;
+        let public_key = vc_property.public_key;
+        let account_id = T::AccountId::decode(&mut &public_key[..]).unwrap();
+        ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Id(account_id)), Error::<T>::PublicKeyRegistered);
+      },
+
+      VCType::PublicDidVC => {
+        let vc_property = Self::decode_vc::<PublicDidVC>(&vc.vc_property)?;
+        let public_key = vc_property.public_key;
+        let account_id = T::AccountId::decode(&mut &public_key[..]).unwrap();
+        ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Id(account_id)), Error::<T>::PublicKeyRegistered);
+      },
+
+      _ => {}
     }
     Ok(())
   }
@@ -298,20 +358,6 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  // // load initial list of validators from genesis
-  // fn initialize_vcs(init_vcs: &Vec<InitialVCs>) {
-  //     for init_vc in init_vcs.iter() {
-  //         let block_no: T::BlockNumber = 0u32.into();
-  //         VCs::<T>::insert(init_vc.identifier.clone(), (init_vc.vcs.clone(), block_no));
-  //         let account_id = did::Module::<T>::get_accountid_from_pubkey(&init_vc.public_key);
-  //         for vc in init_vc.vcs.iter() {
-  //             Lookup::<T>::insert(vc, account_id.clone());
-  //         }
-  //         RLookup::<T>::insert(account_id.clone(), init_vc.vcs.clone());
-  //         Members::put(init_vc.vcs.clone());
-  //         DIDs::<T>::insert(account_id, init_vc.identifier);
-  //     }
-  // }
   /// Validating VC
   pub fn is_vc_active(vc: &VC<T::Hash>) -> Result<IsVCActive, DispatchError> {
     if vc.vc_type != VCType::GenericVC {
