@@ -250,7 +250,10 @@ impl<T: Config> Pallet<T> {
       let vc = Self::decode_vc::<VC<T::Hash>>(&vc_hex).unwrap();
 
       VCs::<T>::insert(vc_id.clone(), Some(vc.clone()));
-      Lookup::<T>::insert(vc.owner, vec![vc_id]);
+      let mut vcids = Lookup::<T>::get(vc.owner);
+      vcids.push(*vc_id);
+      Lookup::<T>::insert(vc.owner, vcids);
+      
       RLookup::<T>::insert(vc_id, vc.owner);
     }
   }
@@ -393,12 +396,8 @@ impl<T: Config> Pallet<T> {
     } else {
       let mut verified_count: usize = 0;
       for issuer in vc.issuers.iter() {
-        let (issuer_did, _) = pallet_did::Pallet::<T>::get_did_details(*issuer)?;
-
-        let public_key = match issuer_did {  
-          Private(private_did) => private_did.public_key,
-          Public(public_did) => public_did.public_key,
-        };
+        ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
+        let public_key = <T as pallet::Config>::DidResolution::get_public_key(issuer).unwrap();
         
         for signature in vc.signatures.iter() {
           if signature.verify(vc.hash.as_ref(), &public_key) {
@@ -480,18 +479,14 @@ impl<T: Config> Pallet<T> {
     let mut is_sign_valid = false;
     let mut vc_approver_list = VCApproverList::<T>::get(vc_id);
     for issuer in vc.issuers.iter() {
-      let (issuer_did_type, _) = pallet_did::Pallet::<T>::get_did_details(*issuer)?;
-
-      let (public_key, identifier) = match issuer_did_type {  
-        Private(private_did) => (private_did.public_key, private_did.identifier),
-        Public(public_did) => (public_did.public_key, public_did.identifier),
-      };
+      ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
+      let public_key = <T as pallet::Config>::DidResolution::get_public_key(&issuer).unwrap();
       
       if sign.verify(vc.hash.as_ref(), &public_key) {
-        if vc_approver_list.contains(&identifier) {
+        if vc_approver_list.contains(&issuer) {
           fail!(Error::<T>::DuplicateSignature);
         }
-        vc_approver_list.push(identifier);
+        vc_approver_list.push(*issuer);
         is_sign_valid = true;
       }
     }
@@ -510,19 +505,15 @@ impl<T: Config> Pallet<T> {
       let sign = &signatures[i];
       let mut is_sign_valid = false;
       for issuer in vc.issuers.iter() {
-        let (issuer_did_type, _) = pallet_did::Pallet::<T>::get_did_details(*issuer)?;
+        ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
+        let public_key = <T as pallet::Config>::DidResolution::get_public_key(issuer).unwrap();
 
-        let (public_key, identifier) = match issuer_did_type {  
-          Private(private_did) => (private_did.public_key, private_did.identifier),
-          Public(public_did) => (public_did.public_key, public_did.identifier),
-        };
-        
         if sign.verify(vc.hash.as_ref(), &public_key) {
-          if vc_approver_list.contains(&identifier) {
+          if vc_approver_list.contains(&issuer) {
             fail!(Error::<T>::DuplicateSignature);
           }
           is_sign_valid = true;
-          vc_approver_list.push(identifier);
+          vc_approver_list.push(*issuer);
         }
       }
       if !is_sign_valid {
