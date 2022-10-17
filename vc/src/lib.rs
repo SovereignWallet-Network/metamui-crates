@@ -6,8 +6,6 @@ use frame_support::{
   traits::EnsureOrigin
 };
 
-use pallet_did::types::DIDType::{ Private, Public };
-
 use frame_system::{self, ensure_signed};
 use sp_core::sr25519;
 use sp_runtime::{
@@ -39,7 +37,7 @@ pub mod pallet {
   use frame_system::pallet_prelude::*;
   /// Configure the pallet by specifying the parameters and types on which it depends.
   #[pallet::config]
-	pub trait Config: frame_system::Config + pallet_did::Config {
+	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
     /// Origin from which approvals must come.
     type ApproveOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
