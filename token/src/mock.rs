@@ -99,9 +99,7 @@ impl pallet_vc::Config for Test {
     type Event = Event;
     type ApproveOrigin = EnsureSignedBy<ValidAccount, u64>;
     type IsCouncilMember= ();
-
     type IsValidator= ();
-
     type DidResolution= ();
 
 }
