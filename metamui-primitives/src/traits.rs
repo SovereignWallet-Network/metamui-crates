@@ -4,8 +4,6 @@ use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
 use frame_support::{ sp_runtime::DispatchError };
-use sp_std::{prelude::*};
-
 // DID
 
 /// Trait to resolve Did
