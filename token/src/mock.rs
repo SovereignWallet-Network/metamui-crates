@@ -1,3 +1,4 @@
+
 use crate as pallet_token;
 use pallet_balances;
 use pallet_vc;
@@ -11,7 +12,6 @@ use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
 };
-
 use system::{EnsureSigned};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -139,7 +139,6 @@ pub const BOB_SEED: [u8; 32] = [
     50, 198, 80, 47, 108, 253, 24, 46, 42, 239, 137,
 ];
 pub const DAVE: [u8; 32] = *b"did:ssid:dave\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut t = system::GenesisConfig::default()
@@ -148,9 +147,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(BOB_ACCOUNT_ID, INITIAL_BALANCE.try_into().unwrap()),(BOB_ACCOUNT_ID, INITIAL_BALANCE)],
     }
-
     .assimilate_storage(&mut t)
     .unwrap();
+    pallet_vc::GenesisConfig::<Test>{
+        initial_vcs: todo!(),
+        phantom: Default::default(),
+    };
+
     t.into()
 }
 pub fn convert_to_array<const N: usize>(mut v: Vec<u8>) -> [u8; N] {
