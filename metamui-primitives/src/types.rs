@@ -10,7 +10,7 @@ use sp_core::sr25519;
 /// VC Property max length
 pub type VCPropertyLimit = ConstU32<32>;
 /// VC Property type
-pub type VCProperty = BoundedVec<u8, VCPropertyLimit>;
+pub type VCProperty = [u8; 160];
 
 /// Public Key TypeI
 pub type PublicKey = sr25519::Public;
@@ -23,7 +23,7 @@ pub type MaxCompNameLen = ConstU32<32>;
 /// Metadata Type
 pub type Metadata = BoundedVec<u8, MaxMetadata>;
 /// Registration Number Type
-pub type RegistrationNumber = BoundedVec<u8, MaxMetadata>;
+pub type RegistrationNumber = BoundedVec<u8, MaxRegNumLen>;
 /// Company Name Type
 pub type CompanyName = BoundedVec<u8, MaxCompNameLen>;
 
