@@ -29,6 +29,7 @@ use pallet_transaction_payment::CurrencyAdapter;
 use sp_core::H256;
 use sp_io;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
+use metamui_primitives::types::PublicKey;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -46,6 +47,10 @@ impl DidResolve<AccountId> for DidResolution {
 	/// convert accountid to DID
 	fn get_did(_k: &AccountId) -> Option<[u8; 32]> {
 		Some(*b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
+	}
+	/// get public_key from accountId
+	fn get_public_key(_: &Did) -> Option<PublicKey> {
+		None
 	}
 }
 

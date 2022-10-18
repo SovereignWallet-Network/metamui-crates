@@ -108,10 +108,6 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Error names should be descriptive.
-		NoneValue,
-		/// Errors should have helpful documentation associated with them.
-		StorageOverflow,
 		/// The given DID already exists on chain
 		DIDAlreadyExists,
 		/// Invalid DID, either format or length is wrong

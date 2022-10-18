@@ -7,7 +7,6 @@ members = [
     "collective",
     "balances",
     "did",
-    "token",
     "vc"
 ]
 [profile.release]

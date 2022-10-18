@@ -16,21 +16,27 @@ pub trait DidResolve<AccountId> {
   fn get_did(k: &AccountId) -> Option<Did>;
   /// convert DID to accountId
   fn get_account_id(k: &Did) -> Option<AccountId>;
+  /// get public_key from accountId
+  fn get_public_key(k: &Did) -> Option<PublicKey>;
 }
 
 impl<AccountId> DidResolve<AccountId> for () {
-    /// return if an accountId is mapped to a DID
-    fn did_exists(_: MultiAddress<AccountId>) -> bool {
-        false
-    }
-    /// convert accountId to DID
-    fn get_did(_: &AccountId) -> Option<Did> {
-        None
-    }
-    /// convert DID to accountId
-    fn get_account_id(_: &Did) -> Option<AccountId> {
-        None
-    }
+  /// return if an accountId is mapped to a DID
+  fn did_exists(_: MultiAddress<AccountId>) -> bool {
+  	false
+  }
+  /// convert accountId to DID
+  fn get_did(_: &AccountId) -> Option<Did> {
+    None
+  }
+  /// convert DID to accountId
+  fn get_account_id(_: &Did) -> Option<AccountId> {
+    None
+  }
+  /// get public_key from accountId
+  fn get_public_key(_: &Did) -> Option<PublicKey> {
+		None
+	}
 }
 
 
