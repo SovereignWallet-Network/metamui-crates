@@ -66,13 +66,12 @@ impl<T: Config> UpdateDid for Pallet<T> {
   fn add_private_did(
       public_key: PublicKey,
       identifier: Did,
-      metadata: Metadata,
   ) -> DispatchResult {
     // Validate did
     Self::can_add_did(public_key, identifier)?;
 
     // Insert Did
-    Self::do_create_private_did(public_key, identifier, metadata)?;
+    Self::do_create_private_did(public_key, identifier)?;
 
     Ok(())
   }
@@ -80,14 +79,13 @@ impl<T: Config> UpdateDid for Pallet<T> {
   fn add_public_did(
       public_key: PublicKey,
       identifier: Did,
-      metadata: Metadata,
       registration_number: RegistrationNumber,
       company_name: CompanyName,
   ) -> DispatchResult {
     // Validate did
     Self::can_add_did(public_key, identifier)?;
 
-    Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name)?;
+    Self::do_create_public_did(public_key, identifier, registration_number, company_name)?;
     
     Ok(())
   }

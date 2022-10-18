@@ -21,7 +21,7 @@ pub use crate::impls::*;
 pub mod pallet {
 	use codec::Decode;
 	use frame_support::{ pallet_prelude::{ *, DispatchResult }, BoundedVec };
-	use frame_system::{ self, pallet_prelude::*} ;
+	use frame_system::{ self, pallet_prelude::*};
 	use sp_std::vec::Vec;
 	use crate::types::*;
 	use cumulus_primitives_core::ParaId;
@@ -140,7 +140,6 @@ pub mod pallet {
 		pub fn create_private(
 			origin: OriginFor<T>,
 			vc_id: VCid,
-			identifier: Did,
 			para_id: Option<ParaId>,
 		) -> DispatchResult {
 			// Ensure Signed
@@ -158,26 +157,25 @@ pub mod pallet {
 			let vc_property = T::VCResolution::decode_vc::<PrivateDidVC>(&vc_details.vc_property)?;
 
 			// Validate did
-			Self::can_add_did(vc_property.public_key, identifier)?;
+			Self::can_add_did(vc_property.public_key, vc_property.did)?;
 
 			// Create the did
 			Self::do_create_private_did(
 				vc_property.public_key, 
-				identifier, 
-				vc_property.metadata.clone()
+				vc_property.did,
 			)?;
 
 			// Set the vc to used
 			T::VCResolution::set_is_vc_used(&vc_id, true);
 
 			// Emit an event.
-			Self::deposit_event(Event::DidCreated { did: identifier });
+			Self::deposit_event(Event::DidCreated { did: vc_property.did });
 
 			if let Some(para_id) = para_id {
 				T::OnDidUpdate::on_new_did(
 					para_id,
 					vc_property.public_key,
-					identifier,
+					vc_property.did,
 				);
 			}
 
@@ -194,7 +192,6 @@ pub mod pallet {
 		pub fn create_public(
 			origin: OriginFor<T>,
 			vc_id: VCid,
-			identifier: Did,
 			para_id: Option<ParaId>,
 		) -> DispatchResult {
 			// Ensure Signed
@@ -212,13 +209,12 @@ pub mod pallet {
 			let vc_property = T::VCResolution::decode_vc::<PublicDidVC>(&vc_details.vc_property)?;
 
 			// Validate did
-			Self::can_add_did(vc_property.public_key, identifier)?;
+			Self::can_add_did(vc_property.public_key, vc_property.did)?;
 
 			// Create the did
 			Self::do_create_public_did(
 				vc_property.public_key, 
-				identifier, 
-				vc_property.metadata.clone(),
+				vc_property.did,
 				vc_property.registration_number.clone(), 
 				vc_property.company_name.clone()
 			)?;
@@ -227,14 +223,14 @@ pub mod pallet {
 			T::VCResolution::set_is_vc_used(&vc_id, true);
 
 			// Emit an event.
-			Self::deposit_event(Event::DidCreated { did: identifier });
+			Self::deposit_event(Event::DidCreated { did: vc_property.did });
 
 
 			if let Some(para_id) = para_id {
 				T::OnDidUpdate::on_new_did(
 					para_id,
 					vc_property.public_key,
-					identifier,
+					vc_property.did,
 				);
 			}
 
@@ -467,7 +463,6 @@ pub mod pallet {
 		pub fn do_create_private_did(
 			public_key: PublicKey,
 			identifier: Did,
-			metadata: Metadata,
 		) -> DispatchResult {
 
 			let current_block_no = <frame_system::Pallet<T>>::block_number();
@@ -479,7 +474,7 @@ pub mod pallet {
 					DIdentity::Private(PrivateDid {
 						identifier: identifier.clone(),
 						public_key,
-						metadata,
+						metadata: Default::default(),
 					}),
 					current_block_no,
 				),
@@ -495,7 +490,6 @@ pub mod pallet {
 		pub fn do_create_public_did(
 			public_key: PublicKey,
 			identifier: Did,
-			metadata: Metadata,
 			registration_number: RegistrationNumber,
 			company_name: CompanyName,
 		) -> DispatchResult {
@@ -509,7 +503,7 @@ pub mod pallet {
 					DIdentity::Public(PublicDid {
 						identifier: identifier.clone(),
 						public_key,
-						metadata,
+						metadata: Default::default(),
 						registration_number,
 						company_name,
 					}),

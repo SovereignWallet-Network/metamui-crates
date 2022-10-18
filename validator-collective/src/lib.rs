@@ -21,7 +21,7 @@
 use scale_info::TypeInfo;
 use sp_runtime::{traits::Hash, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
-use metamui_primitives::{Did, traits::{DidResolve, MultiAddress, ChangeMembers, InitializeMembers}};
+use metamui_primitives::{Did, types::Region, traits::{DidResolve, MultiAddress, ChangeMembers, InitializeMembers}};
 
 use frame_support::{
 	codec::{Decode, Encode, MaxEncodedLen},
@@ -169,11 +169,6 @@ pub mod pallet {
 	pub type MemberPermissionLevel<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Blake2_128Concat, Did, PermissionLevel, ValueQuery>;
 
-	/// The prime member that helps determine the default vote behavior in case of absentations.
-	#[pallet::storage]
-	#[pallet::getter(fn prime)]
-	pub type Prime<T: Config<I>, I: 'static = ()> = StorageValue<_, Did, OptionQuery>;
-
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config<I>, I: 'static = ()> {
@@ -235,7 +230,6 @@ pub mod pallet {
 		pub fn set_members(
 			origin: OriginFor<T>,
 			new_members: Vec<Did>,
-			prime: Option<Did>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			if new_members.len() > T::MaxMembers::get() as usize {
@@ -249,7 +243,6 @@ pub mod pallet {
 			let mut new_members = new_members;
 			new_members.sort();
 			<Self as ChangeMembers>::set_members_sorted(&new_members);
-			Prime::<T, I>::set(prime);
 
 			Ok(().into())
 		}
@@ -361,4 +354,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			_ => false,
 		}
   }
+
+	fn get_region(did: Did) -> Region {
+    let colon = 58;
+    let index = did.iter()
+      .position(|&x| x == colon)
+      .unwrap();
+    let did = did.split_at(index).1;
+    let index = did.iter()
+      .position(|&x| x == colon)
+      .unwrap();
+    let region = did.split_at(index).0;
+    region.to_vec()
+  }
+
+	fn check_regional_permission(validator: &Did, region: Region) -> bool {
+		Self::is_member(validator) && (Self::check_validator_global(validator) || Self::get_region(*validator) == region)
+	}	
 }

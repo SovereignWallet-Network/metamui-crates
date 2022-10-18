@@ -42,13 +42,11 @@ pub trait UpdateDid {
   fn add_private_did(
     public_key: PublicKey,
     identifier: Did,
-    metadata: Metadata,
   ) -> DispatchResult;
 
   fn add_public_did(
     public_key: PublicKey,
     identifier: Did,
-    metadata: Metadata,
     registration_number: RegistrationNumber,
     company_name: CompanyName,
   ) -> DispatchResult;
@@ -70,7 +68,6 @@ impl UpdateDid for () {
   fn add_private_did(
       _: PublicKey,
       _: Did,
-      _: Metadata,
   ) -> DispatchResult {
     Err("Not Implemented".into())
   }
@@ -78,7 +75,6 @@ impl UpdateDid for () {
   fn add_public_did(
       _: PublicKey,
       _: Did,
-      _: Metadata,
       _: RegistrationNumber,
       _: CompanyName,
   )  -> DispatchResult{

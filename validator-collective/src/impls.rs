@@ -1,21 +1,28 @@
 use super::{*, pallet::*};
-use metamui_primitives::{Did, traits::{IsMember, ValidatorLevel}};
+use metamui_primitives::{Did, types::Region, traits::{IsValidator}};
 
-impl<T: Config<I>, I: 'static> IsMember for Pallet<T, I> {
-  /// Check whether `who` is a member of the collective.
-  fn is_collective_member(who: &Did) -> bool {
+impl<T: Config<I>, I: 'static> IsValidator for Pallet<T, I> {
+
+	/// Check whether `who` is a member of the collective.
+  fn is_validator(who: &Did) -> bool {
   	// Note: The dispatchables *do not* use this to check membership so make sure
   	// to update those if this is changed.
   	Self::is_member(who)
   }
-}
 
-
-impl<T: Config<I>, I: 'static> ValidatorLevel for Pallet<T, I> {
   /// Check if given did has global permission level
   fn is_validator_global(did: &Did) -> bool {
     Self::check_validator_global(did)
   }
+
+	fn get_region(did: Did) -> Region {
+    Self::get_region(did)
+  }
+
+	/// Check if given did has permission in given region
+  fn has_regional_permission(did: &Did, region: Region) -> bool {
+		Self::check_regional_permission(did, region)
+	}
 }
 
 
@@ -49,15 +56,12 @@ impl<T: Config<I>, I: 'static> ChangeMembers for Pallet<T, I> {
 			);
 		}
 		Members::<T, I>::put(new);
-		Prime::<T, I>::kill();
 	}
 
-	fn set_prime(prime: Option<Did>) {
-		Prime::<T, I>::set(prime);
-	}
+	fn set_prime(_prime: Option<Did>) {}
 
 	fn get_prime() -> Option<Did> {
-		Prime::<T, I>::get()
+		None
 	}
 }
 

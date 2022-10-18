@@ -201,13 +201,33 @@ impl ChangeMembers for () {
 }
 
 /// Check permission level of a validator
-pub trait ValidatorLevel {
+pub trait IsValidator {
+	/// Is Validator
+	fn is_validator(who: &Did) -> bool;
+	
   /// Check if given did has global permission level
   fn is_validator_global(did: &Did) -> bool;
 
   /// Get region of given validator
   /// Basically, gets sub array between two colons
-  fn get_region(did: Did) -> Vec<u8> {
+  fn get_region(did: Did) -> Region;
+
+	/// Check if given did has permission in given region
+  fn has_regional_permission(did: &Did, region: Region) -> bool;
+}
+
+impl IsValidator for () {
+
+	fn is_validator(who: &Did) -> bool {
+		false
+	}
+
+  /// Check if given did has global permission level
+  fn is_validator_global(_pallet_collective_technical_committeedid: &Did) -> bool {
+    false
+  }
+
+	fn get_region(did: Did) -> Region {
     let colon = 58;
     let index = did.iter()
       .position(|&x| x == colon)
@@ -219,10 +239,9 @@ pub trait ValidatorLevel {
     let region = did.split_at(index).0;
     region.to_vec()
   }
-}
 
-impl ValidatorLevel for () {
-  fn is_validator_global(_pallet_collective_technical_committeedid: &Did) -> bool {
-    false
-  }
+	/// Check if given did has permission in given region
+  fn has_regional_permission(_did: &Did, _region: Region) -> bool {
+		false
+	}
 }
