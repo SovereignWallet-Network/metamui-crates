@@ -1,6 +1,6 @@
 use super::pallet::*;
 use crate::types::*;
-use codec::{Codec};
+use codec::Codec;
 use metamui_primitives::traits::{MultiAddress, DidResolve};
 use sp_runtime::traits::{LookupError, StaticLookup};
 use frame_support::pallet_prelude::DispatchResult;
@@ -18,12 +18,23 @@ impl<T: Config> DidResolve<T::AccountId> for Pallet<T> {
   }
 
   /// Get did from account id 
-  fn get_did(did: &T::AccountId) -> Option<Did> {
-    RLookup::<T>::get(did)
+  fn get_did(account_id: &T::AccountId) -> Option<Did> {
+    RLookup::<T>::get(account_id)
   }
 
-  fn get_account_id(did: &Did) -> Option<T::AccountId> {
-    Lookup::<T>::get(did)
+  /// Get accountId from did
+  fn get_account_id(identifier: &Did) -> Option<T::AccountId> {
+    Lookup::<T>::get(identifier)
+  }
+
+  /// Get public_key from accountId
+  fn get_public_key(identifier: &Did) -> Option<PublicKey> {
+    let (did_details, _) = Self::get_did_details(identifier.clone()).unwrap();
+    let public_key = match did_details {  
+      DIDType::Private(private_did) => private_did.public_key,
+      DIDType::Public(public_did) => public_did.public_key,
+    };
+    Some(public_key)
   }
 }
 

@@ -7,7 +7,8 @@ members = [
     "validator-set",
     "collective",
     "balances",
-    "did"
+    "did",
+    "vc"
 ]
 [profile.release]
 panic = "unwind"

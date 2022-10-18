@@ -59,3 +59,5 @@ pub type BlockId = generic::BlockId<Block>;
 pub type Did = [u8; 32];
 /// VC Id
 pub type VCid = [u8; 32];
+/// VC Hex
+pub type VCHex = Vec<u8>;
