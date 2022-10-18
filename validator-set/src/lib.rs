@@ -24,11 +24,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	traits::{ChangeMembers, Contains, Get, InitializeMembers, SortedMembers},
+	traits::{Contains, Get, SortedMembers},
 	BoundedVec,
 };
 use sp_std::prelude::*;
-use metamui_primitives::{Did, traits::{DidResolve, MultiAddress}};
+use metamui_primitives::{Did, traits::{DidResolve, MultiAddress, ChangeMembers, InitializeMembers}};
 
 pub mod migrations;
 pub mod weights;
@@ -73,10 +73,10 @@ pub mod pallet {
 		/// The receiver of the signal for when the membership has been initialized. This happens
 		/// pre-genesis and will usually be the same as `MembershipChanged`. If you need to do
 		/// something different on initialization, then you can change this accordingly.
-		type MembershipInitialized: InitializeMembers<Did>;
+		type MembershipInitialized: InitializeMembers;
 
 		/// The receiver of the signal for when the membership has changed.
-		type MembershipChanged: ChangeMembers<Did>;
+		type MembershipChanged: ChangeMembers;
 
 		/// The maximum number of members that this membership can have.
 		///
@@ -182,7 +182,7 @@ pub mod pallet {
 
 			<Members<T, I>>::put(&members);
 
-			T::MembershipChanged::change_members_sorted(&[who], &[], &members[..]);
+			T::MembershipChanged::change_members_sorted(&members[..]);
 
 			Self::deposit_event(Event::MemberAdded);
 			Ok(())
@@ -203,7 +203,7 @@ pub mod pallet {
 
 			<Members<T, I>>::put(&members);
 
-			T::MembershipChanged::change_members_sorted(&[], &[who], &members[..]);
+			T::MembershipChanged::change_members_sorted(&members[..]);
 			Self::rejig_prime(&members);
 
 			Self::deposit_event(Event::MemberRemoved);
@@ -236,7 +236,7 @@ pub mod pallet {
 
 			<Members<T, I>>::put(&members);
 
-			T::MembershipChanged::change_members_sorted(&[add], &[remove], &members[..]);
+			T::MembershipChanged::change_members_sorted(&members[..]);
 			Self::rejig_prime(&members);
 
 			Self::deposit_event(Event::MembersSwapped);
@@ -255,7 +255,7 @@ pub mod pallet {
 				BoundedVec::try_from(members).map_err(|_| Error::<T, I>::TooManyMembers)?;
 			members.sort();
 			<Members<T, I>>::mutate(|m| {
-				T::MembershipChanged::set_members_sorted(&members[..], m);
+				T::MembershipChanged::set_members_sorted(&members[..]);
 				Self::rejig_prime(&members);
 				*m = members;
 			});
@@ -286,8 +286,6 @@ pub mod pallet {
 				<Members<T, I>>::put(&members);
 
 				T::MembershipChanged::change_members_sorted(
-					&[new.clone()],
-					&[remove.clone()],
 					&members[..],
 				);
 

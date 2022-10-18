@@ -1552,6 +1552,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-validator-collective"
+version = "0.0.1"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "metamui-primitives",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-validator-set"
 version = "0.0.1"
 dependencies = [
