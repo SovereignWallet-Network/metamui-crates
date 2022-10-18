@@ -31,8 +31,8 @@ impl<T: Config> DidResolve<T::AccountId> for Pallet<T> {
   fn get_public_key(identifier: &Did) -> Option<PublicKey> {
     let (did_details, _) = Self::get_did_details(identifier.clone()).unwrap();
     let public_key = match did_details {  
-      DIDType::Private(private_did) => private_did.public_key,
-      DIDType::Public(public_did) => public_did.public_key,
+      DIdentity::Private(private_did) => private_did.public_key,
+      DIdentity::Public(public_did) => public_did.public_key,
     };
     Some(public_key)
   }
