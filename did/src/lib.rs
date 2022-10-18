@@ -26,7 +26,7 @@ pub mod pallet {
 	use crate::types::*;
 	use cumulus_primitives_core::ParaId;
 
-	use metamui_primitives::{ VCid, types::PublicDidVC, traits::VCResolve, };
+	use metamui_primitives::{ VCid, types::{PublicDidVC, PublicKey}, traits::VCResolve, };
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -672,6 +672,28 @@ pub mod pallet {
 			);
 
 			Ok(())
+		}
+
+		/// Get public_key from accountId
+		pub fn get_pub_key(identifier: &Did) -> Option<PublicKey> {
+			let (did_details, _) = Self::get_did_details(identifier.clone()).unwrap();
+			let public_key = match did_details {  
+				DIdentity::Private(private_did) => private_did.public_key,
+				DIdentity::Public(public_did) => public_did.public_key,
+			};
+			Some(public_key)
+		}
+
+		pub fn check_did_public(did: &Did) -> bool {
+			match DIDs::<T>::get(did) {
+				Some((did_details, _)) => {
+					match did_details {
+						DIdentity::Private(_) => false,
+						DIdentity::Public(_) => true
+					}
+				},
+				None => false
+			}
 		}
 	
 	}

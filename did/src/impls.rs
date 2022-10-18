@@ -23,18 +23,17 @@ impl<T: Config> DidResolve<T::AccountId> for Pallet<T> {
   }
 
   /// Get accountId from did
-  fn get_account_id(identifier: &Did) -> Option<T::AccountId> {
-    Lookup::<T>::get(identifier)
+  fn get_account_id(did: &Did) -> Option<T::AccountId> {
+    Lookup::<T>::get(did)
   }
 
   /// Get public_key from accountId
-  fn get_public_key(identifier: &Did) -> Option<PublicKey> {
-    let (did_details, _) = Self::get_did_details(identifier.clone()).unwrap();
-    let public_key = match did_details {  
-      DIdentity::Private(private_did) => private_did.public_key,
-      DIdentity::Public(public_did) => public_did.public_key,
-    };
-    Some(public_key)
+  fn get_public_key(did: &Did) -> Option<PublicKey> {
+    Self::get_pub_key(did)
+  }
+
+  fn is_did_public(did: &Did) -> bool {
+    Self::check_did_public(did)
   }
 }
 
@@ -65,46 +64,46 @@ where
 impl<T: Config> UpdateDid for Pallet<T> {
   fn add_private_did(
       public_key: PublicKey,
-      identifier: Did,
+      did: Did,
   ) -> DispatchResult {
     // Validate did
-    Self::can_add_did(public_key, identifier)?;
+    Self::can_add_did(public_key, did)?;
 
     // Insert Did
-    Self::do_create_private_did(public_key, identifier)?;
+    Self::do_create_private_did(public_key, did)?;
 
     Ok(())
   }
 
   fn add_public_did(
       public_key: PublicKey,
-      identifier: Did,
+      did: Did,
       registration_number: RegistrationNumber,
       company_name: CompanyName,
   ) -> DispatchResult {
     // Validate did
-    Self::can_add_did(public_key, identifier)?;
+    Self::can_add_did(public_key, did)?;
 
-    Self::do_create_public_did(public_key, identifier, registration_number, company_name)?;
+    Self::do_create_public_did(public_key, did, registration_number, company_name)?;
     
     Ok(())
   }
 
-  fn remove_did(identifier: Did) -> DispatchResult {
-    Self::do_remove(&identifier)
+  fn remove_did(did: Did) -> DispatchResult {
+    Self::do_remove(&did)
   }
 
   fn rotate_key(
-      identifier: Did,
+      did: Did,
       public_key: PublicKey,
   ) -> DispatchResult {
-    Self::do_rotate_key(&identifier, &public_key)
+    Self::do_rotate_key(&did, &public_key)
   }
 
   fn update_metadata(
-      identifier: Did,
+      did: Did,
       metadata: Metadata,
   ) -> DispatchResult {
-    Self::do_update_metadata(&identifier, &metadata)
+    Self::do_update_metadata(&did, &metadata)
   }
 }

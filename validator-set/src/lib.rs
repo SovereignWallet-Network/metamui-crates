@@ -161,6 +161,8 @@ pub mod pallet {
 		TooManyMembers,
 		/// Did Does Not Exist
 		DIDDoesNotExist,
+		/// Did is not public
+		DIDNotPublic,
 	}
 
 	#[pallet::call]
@@ -172,7 +174,7 @@ pub mod pallet {
 		pub fn add_member(origin: OriginFor<T>, who: Did) -> DispatchResult {
 			T::AddOrigin::ensure_origin(origin)?;
 
-			ensure!(T::DidResolution::did_exists(MultiAddress::Did(who)), Error::<T, I>::DIDDoesNotExist);
+			ensure!(T::DidResolution::is_did_public(&who), Error::<T, I>::DIDDoesNotExist);
 
 			let mut members = <Members<T, I>>::get();
 			let location = members.binary_search(&who).err().ok_or(Error::<T, I>::AlreadyMember)?;
@@ -194,8 +196,6 @@ pub mod pallet {
 		#[pallet::weight(50_000_000)]
 		pub fn remove_member(origin: OriginFor<T>, who: Did) -> DispatchResult {
 			T::RemoveOrigin::ensure_origin(origin)?;
-			
-			ensure!(T::DidResolution::did_exists(MultiAddress::Did(who)), Error::<T, I>::DIDDoesNotExist);
 
 			let mut members = <Members<T, I>>::get();
 			let location = members.binary_search(&who).ok().ok_or(Error::<T, I>::NotMember)?;
@@ -222,7 +222,7 @@ pub mod pallet {
 			add: Did,
 		) -> DispatchResult {
 			T::SwapOrigin::ensure_origin(origin)?;
-			ensure!(T::DidResolution::did_exists(MultiAddress::Did(add)), Error::<T, I>::DIDDoesNotExist);
+			ensure!(T::DidResolution::is_did_public(&add), Error::<T, I>::DIDDoesNotExist);
 
 			if remove == add {
 				return Ok(())
@@ -273,7 +273,7 @@ pub mod pallet {
 		pub fn change_key(origin: OriginFor<T>, new: Did) -> DispatchResult {
 			let remove = ensure_signed(origin)?;
 			let remove = T::DidResolution::get_did(&remove).unwrap_or_default();
-			ensure!(T::DidResolution::did_exists(MultiAddress::Did(new)), Error::<T, I>::DIDDoesNotExist);
+			ensure!(T::DidResolution::is_did_public(&new), Error::<T, I>::DIDDoesNotExist);
 
 			if remove != new {
 				let mut members = <Members<T, I>>::get();
@@ -305,7 +305,7 @@ pub mod pallet {
 		#[pallet::weight(50_000_000)]
 		pub fn set_prime(origin: OriginFor<T>, who: Did) -> DispatchResult {
 			T::PrimeOrigin::ensure_origin(origin)?;
-			ensure!(T::DidResolution::did_exists(MultiAddress::Did(who)), Error::<T, I>::DIDDoesNotExist);
+			ensure!(T::DidResolution::is_did_public(&who), Error::<T, I>::DIDDoesNotExist);
 			Self::members().binary_search(&who).ok().ok_or(Error::<T, I>::NotMember)?;
 			Prime::<T, I>::put(&who);
 			T::MembershipChanged::set_prime(Some(who));

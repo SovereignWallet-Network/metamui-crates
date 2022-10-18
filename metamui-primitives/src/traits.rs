@@ -16,6 +16,8 @@ pub trait DidResolve<AccountId> {
   fn get_account_id(k: &Did) -> Option<AccountId>;
   /// get public_key from accountId
   fn get_public_key(k: &Did) -> Option<PublicKey>;
+	/// Check if did is public
+	fn is_did_public(did: &Did) -> bool;
 }
 
 impl<AccountId> DidResolve<AccountId> for () {
@@ -34,6 +36,10 @@ impl<AccountId> DidResolve<AccountId> for () {
   /// get public_key from accountId
   fn get_public_key(_: &Did) -> Option<PublicKey> {
 		None
+	}
+	/// Check if did is public
+	fn is_did_public(did: &Did) -> bool {
+		false
 	}
 }
 
@@ -204,7 +210,7 @@ impl ChangeMembers for () {
 pub trait IsValidator {
 	/// Is Validator
 	fn is_validator(who: &Did) -> bool;
-	
+
   /// Check if given did has global permission level
   fn is_validator_global(did: &Did) -> bool;
 
