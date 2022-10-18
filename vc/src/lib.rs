@@ -13,7 +13,7 @@ use sp_runtime::{
   DispatchError,
 };
 use metamui_primitives::{ 
-  Did, VCid,
+  Did, VCid, VCHex,
   traits::{ DidResolve, IsMember, MultiAddress },
   types::{ VCType, VC, SlashMintTokens, TokenTransferVC, PublicDidVC, PrivateDidVC }
 };

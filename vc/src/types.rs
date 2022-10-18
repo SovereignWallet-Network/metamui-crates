@@ -1,8 +1,6 @@
 use super::*;
 big_array! { BigArray; }
 
-pub type VCHex = Vec<u8>;
-pub type PublicKey = sr25519::Public;
 pub type IsVCActive = bool;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, Default)]
