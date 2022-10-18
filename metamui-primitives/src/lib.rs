@@ -10,6 +10,8 @@ use sp_runtime::{
 	MultiSignature, OpaqueExtrinsic,
 };
 
+use sp_std::prelude::*;
+
 /// All traits for metamui
 pub mod traits;
 
