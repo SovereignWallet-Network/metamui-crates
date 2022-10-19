@@ -52,6 +52,10 @@ impl DidResolve<AccountId> for DidResolution {
 	fn get_public_key(_: &Did) -> Option<PublicKey> {
 		None
 	}
+	/// Check if did is public
+	fn is_did_public(did: &Did) -> bool {
+		false
+	}
 }
 
 frame_support::construct_runtime!(
