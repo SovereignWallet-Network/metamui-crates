@@ -154,10 +154,10 @@ pub mod pallet {
 
 			// Extracting vc from encoded vc byte array
 			let mut vc: VC<T::Hash> = Self::decode_vc(&vc_hex)?;
-      
+
 			// Issuer’s Did validity will be checked in the set_approved_issuers() 
 			// Check if owner’s did is registered or not
-      ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(vc.owner)), Error::<T>::DidDoesNotExist);
+      ensure!(<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(vc_owner)), Error::<T>::DidDoesNotExist);
       
 			match vc.vc_type {
         VCType::TokenVC => {
@@ -171,7 +171,7 @@ pub mod pallet {
     
           // Check If Sender's Did Exists
           let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
-          ensure!(sender_did == None, Error::<T>::DidDoesNotExist);
+          ensure!(sender_did.is_some(), Error::<T>::DidDoesNotExist);
           let sender_did = sender_did.unwrap();
 
 					// Validating caller of above VC types
@@ -183,7 +183,7 @@ pub mod pallet {
 
           // Check If Sender's Did Exists
           let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
-          ensure!(sender_did == None, Error::<T>::DidDoesNotExist);
+          ensure!(sender_did.is_some(), Error::<T>::DidDoesNotExist);
           let sender_did = sender_did.unwrap();
 
 					// ensure the caller is a council member account
