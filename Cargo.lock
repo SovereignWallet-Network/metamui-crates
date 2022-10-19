@@ -1255,6 +1255,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "metamui-primitives"
+version = "0.0.1"
+source = "git+https://github.com/SovereignWallet-Network/metamui-crates?branch=main#fc242b5653d1d3f3701aceab2ba581ad4b584dda"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-application-crypto",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1416,7 +1431,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "metamui-primitives",
+ "metamui-primitives 0.0.1",
  "pallet-transaction-payment",
  "parity-scale-codec",
  "scale-info",
@@ -1434,7 +1449,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "metamui-primitives",
+ "metamui-primitives 0.0.1",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -1451,7 +1466,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "metamui-primitives",
+ "metamui-primitives 0.0.1",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -1488,7 +1503,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "metamui-primitives",
+ "metamui-primitives 0.0.1",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -1536,6 +1551,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-token"
+version = "0.0.1"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "metamui-primitives 0.0.1 (git+https://github.com/SovereignWallet-Network/metamui-crates?branch=main)",
+ "pallet-balances",
+ "pallet-did",
+ "pallet-vc",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-transaction-payment"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#1cca061ede75a4c693a3b71bd1b61d7275fe29e4"
@@ -1559,7 +1593,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "metamui-primitives",
+ "metamui-primitives 0.0.1",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -1576,7 +1610,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "metamui-primitives",
+ "metamui-primitives 0.0.1",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -1591,7 +1625,7 @@ version = "1.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
- "metamui-primitives",
+ "metamui-primitives 0.0.1",
  "pallet-collective",
  "pallet-validator-set",
  "parity-scale-codec",

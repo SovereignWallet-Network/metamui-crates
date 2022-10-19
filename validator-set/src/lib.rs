@@ -28,7 +28,7 @@ use frame_support::{
 	BoundedVec,
 };
 use sp_std::prelude::*;
-use metamui_primitives::{Did, traits::{DidResolve, MultiAddress, ChangeMembers, InitializeMembers}};
+use metamui_primitives::{Did, traits::{DidResolve, ChangeMembers, InitializeMembers}};
 
 pub mod migrations;
 pub mod weights;

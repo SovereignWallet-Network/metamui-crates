@@ -38,7 +38,7 @@ impl<AccountId> DidResolve<AccountId> for () {
 		None
 	}
 	/// Check if did is public
-	fn is_did_public(did: &Did) -> bool {
+	fn is_did_public(_did: &Did) -> bool {
 		false
 	}
 }
@@ -224,12 +224,12 @@ pub trait IsValidator {
 
 impl IsValidator for () {
 
-	fn is_validator(who: &Did) -> bool {
+	fn is_validator(_who: &Did) -> bool {
 		false
 	}
 
   /// Check if given did has global permission level
-  fn is_validator_global(_pallet_collective_technical_committeedid: &Did) -> bool {
+  fn is_validator_global(_did: &Did) -> bool {
     false
   }
 
