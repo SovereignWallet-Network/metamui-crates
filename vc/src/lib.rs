@@ -329,7 +329,7 @@ impl<T: Config> Pallet<T> {
 
         // ensure the caller is a council member account
         let did_region = <T as pallet::Config>::IsValidator::get_region(vc_property.did);
-        ensure!(<T as pallet::Config>::IsValidator::has_regional_permission(&sender_did, did_region), Error::<T>::NotAValidator);
+        ensure!(<T as pallet::Config>::IsValidator::has_regional_permission(sender_did, did_region), Error::<T>::NotAValidator);
         ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Id(account_id)), Error::<T>::PublicKeyRegistered);
       },
 
@@ -436,8 +436,8 @@ impl<T: Config> Pallet<T> {
       vc_ids.push(vc_id);
       Lookup::<T>::insert(identifier, vc_ids);
     } else {
-        Lookup::<T>::insert(identifier, vec![vc_id]);
-      }
+      Lookup::<T>::insert(identifier, vec![vc_id]);
+    }
 
     VCHistory::<T>::insert(vc_id, Some((vc_status, current_block_no)));
 
@@ -511,7 +511,7 @@ impl<T: Config> Pallet<T> {
       let sign = &signatures[i];
       let mut is_sign_valid = false;
       for issuer in vc.issuers.iter() {
-        ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
+        ensure!(<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
         let public_key = <T as pallet::Config>::DidResolution::get_public_key(issuer).unwrap();
 
         if sign.verify(vc.hash.as_ref(), &public_key) {

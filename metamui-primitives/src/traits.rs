@@ -237,11 +237,11 @@ impl IsValidator for () {
     let colon = 58;
     let index = did.iter()
       .position(|&x| x == colon)
-      .unwrap();
-    let did = did.split_at(index).1;
+      .unwrap_or_default();
+    let did = did.split_at(index+1).1;
     let index = did.iter()
       .position(|&x| x == colon)
-      .unwrap();
+      .unwrap_or_default();
     let region = did.split_at(index).0;
     region.to_vec()
   }
