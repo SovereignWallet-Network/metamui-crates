@@ -6,10 +6,8 @@ use frame_support::{traits::ConstU32, BoundedVec};
 use sp_core::sr25519::Signature as SRSignature;
 use sp_core::sr25519;
 
-/// VC Property max length
-pub type VCPropertyLimit = ConstU32<32>;
 /// VC Property type
-pub type VCProperty = [u8; 160];
+pub type VCProperty = [u8; 128];
 
 /// Public Key TypeI
 pub type PublicKey = sr25519::Public;
@@ -25,6 +23,9 @@ pub type Metadata = BoundedVec<u8, MaxMetadata>;
 pub type RegistrationNumber = BoundedVec<u8, MaxRegNumLen>;
 /// Company Name Type
 pub type CompanyName = BoundedVec<u8, MaxCompNameLen>;
+
+/// Region
+pub type Region = Vec<u8>;
 
 /// Type of VCs
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo)]
@@ -93,12 +94,12 @@ pub struct TokenTransferVC {
 pub struct PublicDidVC {
   /// Public Key
 	pub public_key: PublicKey,
-  /// Metadata
-	pub metadata: Metadata,
   /// Registration Number
 	pub registration_number: RegistrationNumber,
   /// Name of Company
 	pub company_name: CompanyName,
+  /// Did
+  pub did: Did,
 }
 
 /// PrivateDidVC Type VC
@@ -107,6 +108,6 @@ pub struct PublicDidVC {
 pub struct PrivateDidVC {
   /// Public Key
 	pub public_key: PublicKey,
-  /// Metadata
-	pub metadata: Metadata,
+  /// Did
+  pub did: Did,
 }

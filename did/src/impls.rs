@@ -8,8 +8,8 @@ use frame_support::pallet_prelude::DispatchResult;
 impl<T: Config> DidResolve<T::AccountId> for Pallet<T> {
 
   /// Check if Did exists
-  fn did_exists(x: MultiAddress<T::AccountId>) -> bool {
-    match x {
+  fn did_exists(address: MultiAddress<T::AccountId>) -> bool {
+    match address {
       // Return if the source is accountId
       MultiAddress::Id(id) => RLookup::<T>::contains_key(id),
       // Fetch the accountId from storage if did is passed
@@ -23,18 +23,17 @@ impl<T: Config> DidResolve<T::AccountId> for Pallet<T> {
   }
 
   /// Get accountId from did
-  fn get_account_id(identifier: &Did) -> Option<T::AccountId> {
-    Lookup::<T>::get(identifier)
+  fn get_account_id(did: &Did) -> Option<T::AccountId> {
+    Lookup::<T>::get(did)
   }
 
   /// Get public_key from accountId
-  fn get_public_key(identifier: &Did) -> Option<PublicKey> {
-    let (did_details, _) = Self::get_did_details(identifier.clone()).unwrap();
-    let public_key = match did_details {  
-      DIDType::Private(private_did) => private_did.public_key,
-      DIDType::Public(public_did) => public_did.public_key,
-    };
-    Some(public_key)
+  fn get_public_key(did: &Did) -> Option<PublicKey> {
+    Self::get_pub_key(did)
+  }
+
+  fn is_did_public(did: &Did) -> bool {
+    Self::check_did_public(did)
   }
 }
 
@@ -63,39 +62,48 @@ where
 
 /// Implement update did
 impl<T: Config> UpdateDid for Pallet<T> {
-	fn add_private_did(
-			public_key: PublicKey,
-			identifier: Did,
-			metadata: Metadata,
-	) -> DispatchResult {
-    Self::do_create_private_did(public_key, identifier, metadata)
-  }
-
-	fn add_public_did(
+  fn add_private_did(
       public_key: PublicKey,
-			identifier: Did,
-			metadata: Metadata,
-			registration_number: RegistrationNumber,
-			company_name: CompanyName,
-	) -> DispatchResult {
-    Self::do_create_public_did(public_key, identifier, metadata, registration_number, company_name)
+      did: Did,
+  ) -> DispatchResult {
+    // Validate did
+    Self::can_add_did(public_key, did)?;
+
+    // Insert Did
+    Self::do_create_private_did(public_key, did)?;
+
+    Ok(())
   }
 
-	fn remove_did(identifier: Did) -> DispatchResult {
-    Self::do_remove(&identifier)
+  fn add_public_did(
+      public_key: PublicKey,
+      did: Did,
+      registration_number: RegistrationNumber,
+      company_name: CompanyName,
+  ) -> DispatchResult {
+    // Validate did
+    Self::can_add_did(public_key, did)?;
+
+    Self::do_create_public_did(public_key, did, registration_number, company_name)?;
+    
+    Ok(())
   }
 
-	fn rotate_key(
-      identifier: Did,
-			public_key: PublicKey,
-	) -> DispatchResult {
-    Self::do_rotate_key(&identifier, &public_key)
+  fn remove_did(did: Did) -> DispatchResult {
+    Self::do_remove(&did)
   }
 
-	fn update_metadata(
-      identifier: Did,
-			metadata: Metadata,
-	) -> DispatchResult {
-    Self::do_update_metadata(&identifier, &metadata)
+  fn rotate_key(
+      did: Did,
+      public_key: PublicKey,
+  ) -> DispatchResult {
+    Self::do_rotate_key(&did, &public_key)
+  }
+
+  fn update_metadata(
+      did: Did,
+      metadata: Metadata,
+  ) -> DispatchResult {
+    Self::do_update_metadata(&did, &metadata)
   }
 }

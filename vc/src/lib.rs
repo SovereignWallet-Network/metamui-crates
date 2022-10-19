@@ -14,7 +14,7 @@ use sp_runtime::{
 };
 use metamui_primitives::{ 
   Did, VCid, VCHex,
-  traits::{ DidResolve, IsMember, MultiAddress },
+  traits::{ DidResolve, IsMember, MultiAddress, IsValidator },
   types::{ VCType, VC, SlashMintTokens, TokenTransferVC, PublicDidVC, PrivateDidVC }
 };
 use sp_std::{ prelude::*, vec };
@@ -35,6 +35,7 @@ pub mod pallet {
   use super::*;
   use frame_support::pallet_prelude::*;
   use frame_system::pallet_prelude::*;
+
   /// Configure the pallet by specifying the parameters and types on which it depends.
   #[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -46,7 +47,7 @@ pub mod pallet {
     type IsCouncilMember: IsMember;
 
     /// Ensure Caller Is Validator
-    type IsValidator: IsMember;
+    type IsValidator: IsValidator;
 
     /// Resolve Did from account Id
     type DidResolution: DidResolve<Self::AccountId>;
@@ -150,12 +151,12 @@ pub mod pallet {
 		/// Adds a member to the membership set
 		#[pallet::weight(1)]
 		pub fn store(origin: OriginFor<T>, vc_hex: VCHex) -> DispatchResult {
+
 			// Extracting vc from encoded vc byte array
 			let mut vc: VC<T::Hash> = Self::decode_vc(&vc_hex)?;
-      
 			// Issuer’s Did validity will be checked in the set_approved_issuers() 
 			// Check if owner’s did is registered or not
-      ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(vc.owner)), Error::<T>::DidDoesNotExist);
+      ensure!(<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(vc.owner)), Error::<T>::DidDoesNotExist);
       
 			match vc.vc_type {
         VCType::TokenVC => {
@@ -163,31 +164,30 @@ pub mod pallet {
 					<T as Config>::ApproveOrigin::ensure_origin(origin)?;
           Self::validate_currency_code(&vc)?;
 				}
-				VCType::SlashTokens | VCType::MintTokens | VCType::TokenTransferVC => {
-					// Validating caller of above VC types
-					Self::validate_vcs(&vc)?;
-				}
-				VCType::GenericVC => {
-					let sender = ensure_signed(origin)?;
+
+				VCType::SlashTokens | VCType::MintTokens | VCType::TokenTransferVC | VCType::PrivateDidVC | VCType::PublicDidVC => {
+          let sender = ensure_signed(origin)?;
+    
           // Check If Sender's Did Exists
           let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
-          ensure!(sender_did == None, Error::<T>::DidDoesNotExist);
+          ensure!(sender_did.is_some(), Error::<T>::DidDoesNotExist);
+          let sender_did = sender_did.unwrap();
+
+					// Validating caller of above VC types
+					Self::validate_vcs(&vc, &sender_did)?;
+				}
+
+				VCType::GenericVC => {
+          let sender = ensure_signed(origin)?;
+
+          // Check If Sender's Did Exists
+          let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
+          ensure!(sender_did.is_some(), Error::<T>::DidDoesNotExist);
+          let sender_did = sender_did.unwrap();
 
 					// ensure the caller is a council member account
-					ensure!(<T as pallet::Config>::IsCouncilMember::is_collective_member(&sender_did.unwrap()), Error::<T>::NotACouncilMember);
+					ensure!(<T as pallet::Config>::IsCouncilMember::is_collective_member(&sender_did), Error::<T>::NotACouncilMember);
 				}
-        VCType::PrivateDidVC | VCType::PublicDidVC => {
-          let sender = ensure_signed(origin)?;
-          // Check If Sender's Did Exists
-          let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
-          ensure!(sender_did == None, Error::<T>::DidDoesNotExist);
-
-          // ensure the caller is a council member account
-					ensure!(<T as pallet::Config>::IsValidator::is_collective_member(&sender_did.unwrap()), Error::<T>::NotAValidator);
-
-          // ensure the public key in the did_vc is not already mapped to another did on chain
-					Self::validate_vcs(&vc)?;
-        }
       }
 		
 			// Generating vc_id from vc to emit in the event
@@ -279,7 +279,7 @@ impl<T: Config> Pallet<T> {
     // Ensure either sender is one of the issuer or member of validator set
     if let Some(vc) = VCs::<T>::get(vc_id) {
       if !vc.issuers.contains(&senders_did)
-        && !<T as pallet::Config>::IsValidator::is_collective_member(&senders_did)
+        && !<T as pallet::Config>::IsValidator::is_validator(&senders_did)
       {
         fail!(Error::<T>::NotAValidatorNorIssuer);
       }
@@ -288,7 +288,7 @@ impl<T: Config> Pallet<T> {
   }
 
   /// Validate slash/token/did vc
-  fn validate_vcs(vc: &VC<T::Hash>) -> Result<(), DispatchError> {
+  fn validate_vcs(vc: &VC<T::Hash>, sender_did: &Did) -> Result<(), DispatchError> {
     match vc.vc_type {
       // derive slash/token vc
       VCType::SlashTokens | VCType::MintTokens => {
@@ -326,6 +326,10 @@ impl<T: Config> Pallet<T> {
         let vc_property = Self::decode_vc::<PrivateDidVC>(&vc.vc_property)?;
         let public_key = vc_property.public_key;
         let account_id = T::AccountId::decode(&mut &public_key[..]).unwrap();
+
+        // ensure the caller is a council member account
+        let did_region = <T as pallet::Config>::IsValidator::get_region(vc_property.did);
+        ensure!(<T as pallet::Config>::IsValidator::has_regional_permission(sender_did, did_region), Error::<T>::NotAValidator);
         ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Id(account_id)), Error::<T>::PublicKeyRegistered);
       },
 
@@ -333,6 +337,10 @@ impl<T: Config> Pallet<T> {
         let vc_property = Self::decode_vc::<PublicDidVC>(&vc.vc_property)?;
         let public_key = vc_property.public_key;
         let account_id = T::AccountId::decode(&mut &public_key[..]).unwrap();
+
+        // ensure the caller is a council member account
+        let did_region = <T as pallet::Config>::IsValidator::get_region(vc_property.did);
+        ensure!(<T as pallet::Config>::IsValidator::has_regional_permission(sender_did, did_region), Error::<T>::NotAValidator);
         ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Id(account_id)), Error::<T>::PublicKeyRegistered);
       },
 
@@ -342,7 +350,7 @@ impl<T: Config> Pallet<T> {
   }
 
   fn validate_currency_code(vc: &VC<T::Hash>) -> Result<(), DispatchError>  {
-    let mut currency_code = vec![];
+    let mut currency_code: Vec<u8> = Default::default();
     match vc.vc_type {
       VCType::TokenVC => {
         let vc_property: TokenVC =
@@ -428,8 +436,8 @@ impl<T: Config> Pallet<T> {
       vc_ids.push(vc_id);
       Lookup::<T>::insert(identifier, vc_ids);
     } else {
-        Lookup::<T>::insert(identifier, vec![vc_id]);
-      }
+      Lookup::<T>::insert(identifier, vec![vc_id]);
+    }
 
     VCHistory::<T>::insert(vc_id, Some((vc_status, current_block_no)));
 
@@ -503,7 +511,7 @@ impl<T: Config> Pallet<T> {
       let sign = &signatures[i];
       let mut is_sign_valid = false;
       for issuer in vc.issuers.iter() {
-        ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
+        ensure!(<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
         let public_key = <T as pallet::Config>::DidResolution::get_public_key(issuer).unwrap();
 
         if sign.verify(vc.hash.as_ref(), &public_key) {
