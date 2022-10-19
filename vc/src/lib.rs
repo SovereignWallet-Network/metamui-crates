@@ -151,12 +151,6 @@ pub mod pallet {
 		/// Adds a member to the membership set
 		#[pallet::weight(1)]
 		pub fn store(origin: OriginFor<T>, vc_hex: VCHex) -> DispatchResult {
-      let sender = ensure_signed(origin.clone())?;
-
-      // Check If Sender's Did Exists
-      let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
-      ensure!(sender_did == None, Error::<T>::DidDoesNotExist);
-      let sender_did = sender_did.unwrap();
 
 			// Extracting vc from encoded vc byte array
 			let mut vc: VC<T::Hash> = Self::decode_vc(&vc_hex)?;
@@ -173,11 +167,25 @@ pub mod pallet {
 				}
 
 				VCType::SlashTokens | VCType::MintTokens | VCType::TokenTransferVC | VCType::PrivateDidVC | VCType::PublicDidVC => {
+          let sender = ensure_signed(origin)?;
+    
+          // Check If Sender's Did Exists
+          let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
+          ensure!(sender_did == None, Error::<T>::DidDoesNotExist);
+          let sender_did = sender_did.unwrap();
+
 					// Validating caller of above VC types
 					Self::validate_vcs(&vc, &sender_did)?;
 				}
 
 				VCType::GenericVC => {
+          let sender = ensure_signed(origin)?;
+
+          // Check If Sender's Did Exists
+          let sender_did = <T as pallet::Config>::DidResolution::get_did(&sender);
+          ensure!(sender_did == None, Error::<T>::DidDoesNotExist);
+          let sender_did = sender_did.unwrap();
+
 					// ensure the caller is a council member account
 					ensure!(<T as pallet::Config>::IsCouncilMember::is_collective_member(&sender_did), Error::<T>::NotACouncilMember);
 				}
