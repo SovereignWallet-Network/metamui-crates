@@ -340,7 +340,7 @@ impl<T: Config> Pallet<T> {
 
         // ensure the caller is a council member account
         let did_region = <T as pallet::Config>::IsValidator::get_region(vc_property.did);
-        ensure!(<T as pallet::Config>::IsValidator::has_regional_permission(&sender_did, did_region), Error::<T>::NotAValidator);
+        ensure!(<T as pallet::Config>::IsValidator::has_regional_permission(sender_did, did_region), Error::<T>::NotAValidator);
         ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Id(account_id)), Error::<T>::PublicKeyRegistered);
       },
 
