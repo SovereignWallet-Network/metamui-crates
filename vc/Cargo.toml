@@ -31,6 +31,8 @@ sp-std = { version = "4.0.0", default-features = false, git = 'https://github.co
 metamui-primitives = { default-features = false, path = '../metamui-primitives', version = '0.0.1' }
 pallet-validator-set = { default-features = false, path = '../validator-set', version = '0.0.1' }
 pallet-collective = { default-features = false, path = '../collective', version = '0.0.1' }
+pallet-validator-collective = { git = "https://github.com/SovereignWallet-Network/metamui-crates.git", default-features = false, branch = "main" }
+pallet-did = { default-features = false, path = "../did", version = '0.0.1' }
 
 [features]
 default = ['std']
@@ -41,4 +43,5 @@ std = [
     'frame-system/std',
     'pallet-validator-set/std',
     'pallet-collective/std',
+    'pallet-did/std'
 ]
