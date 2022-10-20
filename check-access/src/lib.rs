@@ -40,6 +40,29 @@ pub mod pallet {
 		type SudoOrigin: EnsureOrigin<Self::Origin>;
 	}
   
+  #[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub initial_extrinsics: Vec<InitialExtrinsics>,
+		pub phantom: PhantomData<T>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self {
+				initial_extrinsics: Default::default(),
+				phantom: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			Pallet::<T>::initialise_extrinsics(&self.initial_extrinsics);
+		}
+	}
+
   #[pallet::pallet]
   #[pallet::generate_store(pub(super) trait Store)]
   pub struct Pallet<T>(_);
@@ -102,14 +125,6 @@ impl<T: Config> Pallet<T> {
   }
 
   fn adjust_null_padding(name: &mut Vec<u8>) -> Vec<u8> {
-    // let required_padding = 32 - name.len() as i32;
-    // let mut extra_padding = "".to_string();
-    // let mut counter = 0;
-    // while counter < required_padding{
-    //   extra_padding = extra_padding + "\0";
-    //   counter+=1;
-    // }
-    // name.to_owned() + &extra_padding
     let len = 32;
     let diff = len - name.len();
     name.extend(sp_std::iter::repeat(0).take(diff));
@@ -119,6 +134,14 @@ impl<T: Config> Pallet<T> {
 	fn convert_to_array(name: Vec<u8>) -> [u8; 32] {
 		(&name[..]).try_into().unwrap_or_default()
 	}
+
+  fn initialise_extrinsics(extrinsics: &Vec<InitialExtrinsics>) {
+    for extrinsic in extrinsics.iter() {
+      let pallet_name = extrinsic.pallet_name;
+      let function_name = extrinsic.function_name;
+      <WhitelistedPallets<T>>::insert(pallet_name, function_name, ());
+    }
+  }
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
