@@ -11,8 +11,7 @@ fn test_add_extrinsic() {
       FUNCTION_NAME
 		));
 
-    let extrinsic = ExtrinsicsStruct { pallet_name: PALLET_NAME, function_name: FUNCTION_NAME };
-    assert_eq!(WhitelistedPallets::<Test>::contains_key(extrinsic.clone()), true);
+    assert_eq!(WhitelistedPallets::<Test>::contains_key(PALLET_NAME, FUNCTION_NAME), true);
 	})
 }
 
@@ -26,8 +25,7 @@ fn test_add_already_added_extrinsic() {
       FUNCTION_NAME
 		));
 
-    let extrinsic = ExtrinsicsStruct { pallet_name: PALLET_NAME, function_name: FUNCTION_NAME };
-    assert_eq!(WhitelistedPallets::<Test>::contains_key(extrinsic.clone()), true);
+    assert_eq!(WhitelistedPallets::<Test>::contains_key(PALLET_NAME, FUNCTION_NAME), true);
 
     assert_ok!(CheckAccess::add_allowed_extrinsic(
 			Origin::root(),
@@ -46,8 +44,7 @@ fn test_remove_extrinsic() {
       FUNCTION_NAME
 		));
 
-    let extrinsic = ExtrinsicsStruct { pallet_name: PALLET_NAME, function_name: FUNCTION_NAME };
-    assert_eq!(WhitelistedPallets::<Test>::contains_key(extrinsic.clone()), true);
+    assert_eq!(WhitelistedPallets::<Test>::contains_key(PALLET_NAME, FUNCTION_NAME), true);
 
     assert_ok!(CheckAccess::remove_allowed_extrinsic(
 			Origin::root(),
@@ -55,7 +52,7 @@ fn test_remove_extrinsic() {
       FUNCTION_NAME
 		));
 
-    assert_eq!(WhitelistedPallets::<Test>::contains_key(extrinsic.clone()), false);
+    assert_eq!(WhitelistedPallets::<Test>::contains_key(PALLET_NAME, FUNCTION_NAME), false);
 	})
 }
 
@@ -63,8 +60,7 @@ fn test_remove_extrinsic() {
 #[should_panic]
 fn test_remove_non_existing_extrinsic() {
 	new_test_ext().execute_with(|| {
-    let extrinsic = ExtrinsicsStruct { pallet_name: PALLET_NAME, function_name: FUNCTION_NAME };
-    assert_eq!(WhitelistedPallets::<Test>::contains_key(extrinsic.clone()), false);
+    assert_eq!(WhitelistedPallets::<Test>::contains_key(PALLET_NAME, FUNCTION_NAME), false);
 
     assert_ok!(CheckAccess::remove_allowed_extrinsic(
 			Origin::root(),

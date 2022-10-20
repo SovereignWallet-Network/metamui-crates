@@ -9,17 +9,15 @@ use sp_runtime::{
   },
 };
 
-// #[cfg(test)]
-// mod mock;
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
 
 use sp_std::fmt::Debug;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 use scale_info::TypeInfo;
-// use scale_info::prelude::string::{ String, ToString };
-// use sp_std::borrow::ToOwned;
 use metamui_primitives::traits::{ DidResolve, MultiAddress };
 pub mod types;
 use crate::types::*;
@@ -76,11 +74,10 @@ pub mod pallet {
     pub fn add_allowed_extrinsic(origin: OriginFor<T>, pallet_name: PalletName, function_name: FunctionName) -> DispatchResultWithPostInfo {
       T::SudoOrigin::ensure_origin(origin)?;
 			// ensure extrinsic is not already added
-			// let extrinsic = ExtrinsicsStruct { pallet_name, function_name }; 
 			ensure!(!WhitelistedPallets::<T>::contains_key(pallet_name, function_name), Error::<T>::ExtrinsicAlreadyExists);
 
       WhitelistedPallets::<T>::insert(pallet_name, function_name, ());
-			Self::deposit_event(Event::ExtrinsicAdded{pallet_name, function_name });
+			Self::deposit_event(Event::ExtrinsicAdded{ pallet_name, function_name });
       Ok(().into())
     }
           
@@ -89,7 +86,6 @@ pub mod pallet {
       T::SudoOrigin::ensure_origin(origin)?;
 
 			// ensure extrinsic exists on chain
-			// let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
 			ensure!(WhitelistedPallets::<T>::contains_key(pallet_name, function_name), Error::<T>::ExtrinsicDoesNotExist);
 
       WhitelistedPallets::<T>::remove(pallet_name, function_name);
