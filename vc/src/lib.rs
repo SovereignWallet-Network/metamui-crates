@@ -153,7 +153,7 @@ pub mod pallet {
 		pub fn store(origin: OriginFor<T>, vc_hex: VCHex) -> DispatchResult {
 
 			// Extracting vc from encoded vc byte array
-			let mut vc: VC<T::Hash> = Self::decode_vc(&vc_hex)?;
+			let vc: VC<T::Hash> = Self::decode_vc(&vc_hex)?;
 			// Issuer’s Did validity will be checked in the set_approved_issuers() 
 			// Check if owner’s did is registered or not
       ensure!(<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(vc.owner)), Error::<T>::DidDoesNotExist);
@@ -192,8 +192,7 @@ pub mod pallet {
 		
 			// Generating vc_id from vc to emit in the event
 			let vc_id: VCid = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
-      // Setting is_vc_active to false
-      vc.is_vc_active = false;
+
 			// storing hash
 			Self::store_vc(vc.owner, vc, vc_id)?;
 			Self::deposit_event(Event::VCValidated{ vcid: vc_id });
@@ -350,7 +349,7 @@ impl<T: Config> Pallet<T> {
   }
 
   fn validate_currency_code(vc: &VC<T::Hash>) -> Result<(), DispatchError>  {
-    let mut currency_code: Vec<u8> = Default::default();
+    let mut currency_code: Vec<u8>;
     match vc.vc_type {
       VCType::TokenVC => {
         let vc_property: TokenVC =
@@ -402,7 +401,7 @@ impl<T: Config> Pallet<T> {
     } else {
       let mut verified_count: usize = 0;
       for issuer in vc.issuers.iter() {
-        ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
+        ensure!(<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
         let public_key = <T as pallet::Config>::DidResolution::get_public_key(issuer).unwrap();
         
         for signature in vc.signatures.iter() {
@@ -419,7 +418,7 @@ impl<T: Config> Pallet<T> {
   }
 
   /// Store VC
-  fn store_vc(identifier: Did, vc: VC<T::Hash>, vc_id: VCid) -> Result<(), DispatchError> {
+  fn store_vc(identifier: Did, mut vc: VC<T::Hash>, vc_id: VCid) -> Result<(), DispatchError> {
     let current_block_no = <frame_system::Pallet<T>>::block_number();
     let vc_status = Self::is_vc_active(&vc)?;
 
@@ -427,6 +426,9 @@ impl<T: Config> Pallet<T> {
     ensure!(!RLookup::<T>::contains_key(&vc_id), Error::<T>::VCAlreadyExists);
         
     Self::set_approved_issuers(vc_id, &vc)?;
+
+    // Setting is_vc_active
+    vc.is_vc_active = vc_status;
 
     VCs::<T>::insert(vc_id, Some(vc.clone()));
     RLookup::<T>::insert(vc_id, identifier);
@@ -485,7 +487,7 @@ impl<T: Config> Pallet<T> {
     let mut is_sign_valid = false;
     let mut vc_approver_list = VCApproverList::<T>::get(vc_id);
     for issuer in vc.issuers.iter() {
-      ensure!(!<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
+      ensure!(<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(*issuer)), Error::<T>::DidDoesNotExist);
       let public_key = <T as pallet::Config>::DidResolution::get_public_key(&issuer).unwrap();
       
       if sign.verify(vc.hash.as_ref(), &public_key) {
