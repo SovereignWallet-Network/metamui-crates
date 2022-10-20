@@ -272,9 +272,9 @@ impl<T: Config> Pallet<T> {
     
     // Check if sender's did exists on chain
     let senders_did = <T as pallet::Config>::DidResolution::get_did(&senders_acccount_id);
-    ensure!(senders_did == None, Error::<T>::DidDoesNotExist);
-
+    ensure!(senders_did.is_some(), Error::<T>::DidDoesNotExist);
     let senders_did = senders_did.unwrap();
+
     // Ensure either sender is one of the issuer or member of validator set
     if let Some(vc) = VCs::<T>::get(vc_id) {
       if !vc.issuers.contains(&senders_did)
@@ -448,7 +448,11 @@ impl<T: Config> Pallet<T> {
 
   /// Update VC from storage
   fn update_vc_status(vc_id: VCid, status: IsVCActive) -> Result<(), DispatchError> {
-    if let Some(vc) = VCs::<T>::get(&vc_id) {
+    if let Some(mut vc) = VCs::<T>::get(&vc_id) {
+
+      // Setting is_vc_active
+      vc.is_vc_active = status;
+
       VCs::<T>::insert(vc_id, Some(vc));
     } else {
       fail!(Error::<T>::VCIdDoesNotExist);
@@ -462,8 +466,11 @@ impl<T: Config> Pallet<T> {
   }
 
   // Update VC and vc_status from storage
-  fn update_vc_and_status(vc_id: VCid, updated_vc: VC<T::Hash>) -> Result<(), DispatchError> {
+  fn update_vc_and_status(vc_id: VCid, mut updated_vc: VC<T::Hash>) -> Result<(), DispatchError> {
+    
+    // Setting is_vc_active
     let status = Self::is_vc_active(&updated_vc)?;
+    updated_vc.is_vc_active = status;
     VCs::<T>::insert(vc_id, Some(updated_vc));
 
     if let Some(vc_history) = VCHistory::<T>::get(&vc_id) {
@@ -471,6 +478,7 @@ impl<T: Config> Pallet<T> {
     }
 
     Self::deposit_event(Event::VCStatusUpdated{ vcid: vc_id, vcstatus: status });
+
     Ok(())
   }
 

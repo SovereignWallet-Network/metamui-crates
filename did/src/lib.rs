@@ -147,11 +147,11 @@ pub mod pallet {
 
 			// Check if the VCId exists on chain
 			let vc_details = T::VCResolution::get_vc(&vc_id);
-			ensure!(vc_details == None, Error::<T>::VCIdDoesNotExist);
+			ensure!(vc_details.is_some(), Error::<T>::VCIdDoesNotExist);
 			let vc_details = vc_details.unwrap();
 
 			// Verify if the vc is valid
-			ensure!(!Self::verify_did_vc(vc_details.clone(), VCType::PrivateDidVC), Error::<T>::InvalidVC);
+			ensure!(Self::verify_did_vc(vc_details.clone(), VCType::PrivateDidVC), Error::<T>::InvalidVC);
 
 			// Decode the VC for getting the metadata and public key
 			let vc_property = T::VCResolution::decode_vc::<PrivateDidVC>(&vc_details.vc_property)?;
@@ -199,11 +199,11 @@ pub mod pallet {
 
 			// Check if the VCId exists on chain
 			let vc_details = T::VCResolution::get_vc(&vc_id);
-			ensure!(vc_details == None, Error::<T>::VCIdDoesNotExist);
+			ensure!(vc_details.is_some(), Error::<T>::VCIdDoesNotExist);
 			let vc_details = vc_details.unwrap();
 
 			// Verify if the vc is valid
-			ensure!(!Self::verify_did_vc(vc_details.clone(), VCType::PublicDidVC), Error::<T>::InvalidVC);
+			ensure!(Self::verify_did_vc(vc_details.clone(), VCType::PublicDidVC), Error::<T>::InvalidVC);
 
 			// Decode the VC for getting the registration number and company name
 			let vc_property = T::VCResolution::decode_vc::<PublicDidVC>(&vc_details.vc_property)?;
