@@ -1,13 +1,16 @@
 [workspace]
 members = [
+    "validator-collective",
     "metamui-primitives",
-    "node-authorities",
     "node-authorization",
+    "node-authorities",
     "validator-set",
     "collective",
     "balances",
     "did",
-    "check-access"
+    "check-access",
+    "token",
+    "vc"
 ]
 [profile.release]
 panic = "unwind"

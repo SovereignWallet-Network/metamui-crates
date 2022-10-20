@@ -9,6 +9,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	MultiSignature, OpaqueExtrinsic,
 };
+use sp_std::prelude::*;
 
 /// All traits for metamui
 pub mod traits;
@@ -59,3 +60,5 @@ pub type BlockId = generic::BlockId<Block>;
 pub type Did = [u8; 32];
 /// VC Id
 pub type VCid = [u8; 32];
+/// VC Hex
+pub type VCHex = Vec<u8>;
