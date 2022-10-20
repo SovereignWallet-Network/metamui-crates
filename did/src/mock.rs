@@ -74,7 +74,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 	
 	super::GenesisConfig::<Test> { 
-		initial_dids: vec![DIDType::Private(
+		initial_dids: vec![DIdentity::Private(
 			PrivateDid {
 				identifier: VALIDATOR_DID,
 				public_key: VALIDATOR_PUBKEY,
