@@ -93,8 +93,6 @@ ord_parameter_types! {
 	pub const Five: u64 = 5;
 	pub const Six: u64 = 5;
 }
- 
-
 
 impl pallet_validator_set::Config for Test {
 	type Event = Event;
@@ -131,7 +129,6 @@ impl pallet_collective::Config<CouncilCollective> for Test {
 	type WeightInfo = ();
 }
 
-
 parameter_types! {
 	pub const TechnicalMotionDuration: BlockNumber = 7 * DAYS;
 	pub const TechnicalMaxProposals: u32 = 100;
@@ -142,14 +139,14 @@ pub type ValidatorCollective = pallet_validator_collective::Instance1;
 impl pallet_validator_collective::Config<ValidatorCollective> for Test {
 	type Event = Event;
 	type Origin = Origin;
-	type Proposal = Call; 
+	type Proposal = Call;
 	type DidResolution = Did;
 	type CallOrigin = EnsureSignedBy<Six, u64>;
 	type MaxMembers = TechnicalMaxMembers;
 	type WeightInfo = ();
 }
 
-
+pub const VALIDATOR_ACCOUNT: u64 = 0;
 pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:Alice\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 pub const VALIDATOR_PUBKEY: sr25519::Public = sr25519::Public([0; 32]);
 const NON_VALIDATOR_ACCOUNT: u64 = 2;
@@ -204,36 +201,31 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	// .assimilate_storage::<Test>(&mut o)
 	// .unwrap();
 
-	pallet_validator_set::GenesisConfig::<Test> { 
+	pallet_validator_set::GenesisConfig::<Test> {
 		members: frame_support::bounded_vec![[10; 32], [20; 32], [30; 32]],
-    phantom: Default::default()
-		}
-		.assimilate_storage(&mut o)
-		.unwrap();
-
-	pallet_did::GenesisConfig::<Test> {
-		initial_dids: vec![DIdentity::Private(
-			PrivateDid {
-				identifier: VALIDATOR_DID,
-				public_key: VALIDATOR_PUBKEY,
-				metadata: Default::default(),
-			}
-		)],
-		
 		phantom: Default::default(),
 	}
 	.assimilate_storage(&mut o)
 	.unwrap();
 
-	pallet_collective::GenesisConfig::<Test, pallet_collective::Instance1> { 
-		members: vec![ALICE, BOB, DAVE],
-    phantom: Default::default(),
-	}
-		.assimilate_storage(&mut o)
-		.unwrap();
-  
-  
+	pallet_did::GenesisConfig::<Test> {
+		initial_dids: vec![DIdentity::Private(PrivateDid {
+			identifier: VALIDATOR_DID,
+			public_key: VALIDATOR_PUBKEY,
+			metadata: Default::default(),
+		})],
 
+		phantom: Default::default(),
+	}
+	.assimilate_storage(&mut o)
+	.unwrap();
+
+	pallet_collective::GenesisConfig::<Test, pallet_collective::Instance1> {
+		members: vec![ALICE, BOB, DAVE],
+		phantom: Default::default(),
+	}
+	.assimilate_storage(&mut o)
+	.unwrap();
 	o.into()
 }
 
@@ -277,15 +269,12 @@ fn test_store() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
 
-		let did_vc = PrivateDidVC {
-			public_key : pair.public(),
-			did : BOB
-		};
+		let did_vc = PrivateDidVC { public_key: pair.public(), did: VALIDATOR_DID };
 
 		let did_vc: [u8; 128] = convert_to_array::<128>(did_vc.encode());
 		let vc_type = VCType::PrivateDidVC;
-		let owner = BOB;
-		let issuers = vec![BOB];
+		let owner = VALIDATOR_DID;
+		let issuers = vec![VALIDATOR_DID];
 		let hash = BlakeTwo256::hash_of(&(&vc_type, &did_vc, &owner, &issuers));
 		let signature = pair.sign(hash.as_ref());
 
@@ -300,14 +289,12 @@ fn test_store() {
 			is_vc_active: false,
 		};
 
-		
+		assert_ok!(VC::store(Origin::signed(VALIDATOR_ACCOUNT), vc.encode()));
 
 		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
 
 		assert_ok!(Did::create_private(Origin::signed(ALICE_ACCOUNT_ID), vc_id, None));
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-		
 		let did = RLookup::<Test>::get(vc_id);
 		assert_eq!(did, BOB);
 		assert_eq!(Lookup::<Test>::get(did), vec![vc_id]);
