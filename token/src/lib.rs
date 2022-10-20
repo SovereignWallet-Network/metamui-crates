@@ -126,7 +126,9 @@ pub mod pallet {
 			T::Currency::unreserve(&from_acc, amount);
 			// transfer amount to destination
 			T::Currency::transfer(&from_acc, &to_acc, amount, ExistenceRequirement::KeepAlive)?;
+
 			Self::deposit_event(Event::ReserveWithdrawn { from, to });
+
 			Ok(())
 		}
 
@@ -136,17 +138,24 @@ pub mod pallet {
 		#[pallet::weight(1)]
 		pub fn slash_token(origin: OriginFor<T>, vc_id: VCid) -> DispatchResultWithPostInfo {
 			let sender = ensure_signed(origin)?;
+
 			let vc_struct =
 				Self::validate_vc(&sender, vc_id, VCType::SlashTokens, Error::<T>::InvalidVC)?;
+
 			let slash_vc: SlashMintTokens =
 				T::VCResolution::decode_vc::<SlashMintTokens>(&vc_struct.vc_property)?;
+
 			let amount: BalanceOf<T> = slash_vc.amount.try_into().ok().unwrap_or_default();
 			let vc_owner = Self::get_vc_owner::<SlashMintTokens>(vc_struct)?;
+
 			ensure!(T::Currency::can_slash(&vc_owner, amount), Error::<T>::BalanceTooLow);
+			
 			T::Currency::slash(&vc_owner, amount);
 			// update vc's is_used flag as used
 			T::VCResolution::set_is_vc_used(&vc_id, true);
+
 			Self::deposit_event(Event::TokenSlashed { balance: amount, vc_id });
+
 			Ok(().into())
 		}
 
@@ -157,21 +166,28 @@ pub mod pallet {
 			to: Did,
 		) -> DispatchResultWithPostInfo {
 			let sender = ensure_signed(origin)?;
+
 			ensure!(
 				T::DidResolution::did_exists(MultiAddress::Did(to)),
 				Error::<T>::RecipentDIDNotRegistered
 			);
+
 			let vc_struct =
 				Self::validate_vc(&sender, vc_id, VCType::TokenTransferVC, Error::<T>::InvalidVC)?;
+
 			let transfer_vc: TokenTransferVC =
 				T::VCResolution::decode_vc::<TokenTransferVC>(&vc_struct.vc_property)?;
+
 			let amount: BalanceOf<T> = transfer_vc.amount.try_into().ok().unwrap_or_default();
 			let vc_owner = Self::get_vc_owner::<TokenTransferVC>(vc_struct)?;
 			let to_acc = T::DidResolution::get_account_id(&to).unwrap();
+
 			T::Currency::transfer(&vc_owner, &to_acc, amount, ExistenceRequirement::KeepAlive)?;
 			// update vc's is_used flag as used
 			T::VCResolution::set_is_vc_used(&vc_id, true);
+
 			Self::deposit_event(Event::TransferredWithVC { to, balance: amount, vc_id });
+
 			Ok(().into())
 		}
 
@@ -182,16 +198,22 @@ pub mod pallet {
 		#[pallet::weight(1)]
 		pub fn mint_token(origin: OriginFor<T>, vc_id: VCid) -> DispatchResultWithPostInfo {
 			let sender = ensure_signed(origin)?;
+
 			let vc_struct =
 				Self::validate_vc(&sender, vc_id, VCType::MintTokens, Error::<T>::InvalidVC)?;
+
 			let mint_vc: SlashMintTokens =
 				T::VCResolution::decode_vc::<SlashMintTokens>(&vc_struct.vc_property)?;
+
 			let amount: BalanceOf<T> = mint_vc.amount.try_into().ok().unwrap_or_default();
 			let vc_owner = Self::get_vc_owner::<SlashMintTokens>(vc_struct)?;
-			T::Currency::deposit_creating(&vc_owner,amount);
+
+			T::Currency::deposit_creating(&vc_owner, amount);
 			// update vc's is_used flag as used
 			T::VCResolution::set_is_vc_used(&vc_id, true);
+
 			Self::deposit_event(Event::TokenMinted { balance: amount, vc_id });
+
 			Ok(().into())
 		}
 	}
@@ -212,6 +234,7 @@ pub mod pallet {
 				T::OnKilledAccount::on_killed_account(&who.unwrap());
 			}
 		}
+		
 		// Validate vc
 		fn validate_vc(
 			senders_acccount_id: &T::AccountId,
@@ -224,6 +247,7 @@ pub mod pallet {
 
 			// ensure sender has associated vc
 			ensure!(senders_did.eq(&Some(vc_struct.owner)), Error::<T>::DidNotRegisteredWithVC);
+
 			Ok(vc_struct)
 		}
 
@@ -249,6 +273,7 @@ pub mod pallet {
 			};
 			Ok(owners_acc_id)
 		}
+
 		// Get vc struct
 		fn get_vc_struct(
 			vc_id: VCid,

@@ -246,12 +246,13 @@ impl<T: Config> Pallet<T> {
       
       let vc = Self::decode_vc::<VC<T::Hash>>(&vc_hex).unwrap();
 
-      VCs::<T>::insert(vc_id.clone(), Some(vc.clone()));
       let mut vcids = Lookup::<T>::get(vc.owner);
       vcids.push(*vc_id);
+
       Lookup::<T>::insert(vc.owner, vcids);
-      
       RLookup::<T>::insert(vc_id, vc.owner);
+
+      VCs::<T>::insert(vc_id, Some(vc));
     }
   }
   
@@ -283,6 +284,7 @@ impl<T: Config> Pallet<T> {
         fail!(Error::<T>::NotAValidatorNorIssuer);
       }
     };
+
     Ok(())
   }
 
@@ -345,6 +347,7 @@ impl<T: Config> Pallet<T> {
 
       _ => {}
     }
+
     Ok(())
   }
 
@@ -414,6 +417,7 @@ impl<T: Config> Pallet<T> {
         return Ok(false);
       }
     }
+
     Ok(true)
   }
 
@@ -462,12 +466,13 @@ impl<T: Config> Pallet<T> {
       VCHistory::<T>::insert(vc_id, Some((status, vc_history.1)));
     }
     Self::deposit_event(Event::VCStatusUpdated{ vcid: vc_id, vcstatus: status });
+
     Ok(())
   }
 
   // Update VC and vc_status from storage
   fn update_vc_and_status(vc_id: VCid, mut updated_vc: VC<T::Hash>) -> Result<(), DispatchError> {
-    
+
     // Setting is_vc_active
     let status = Self::is_vc_active(&updated_vc)?;
     updated_vc.is_vc_active = status;
@@ -537,6 +542,7 @@ impl<T: Config> Pallet<T> {
       }
     }
     VCApproverList::<T>::insert(vc_id, vc_approver_list);
+    
     Ok(())
   }
 }

@@ -369,8 +369,7 @@ pub mod pallet {
 			if let Some(prev_key_list) = PrevKeys::<T>::get(identifier) {
 				Ok(prev_key_list)
 			} else {
-				let my_vec: BoundedVec<(T::AccountId, T::BlockNumber), T::MaxKeyChanges> = Default::default();
-				Ok(my_vec)
+				Ok(Default::default())
 			}
 		}
 
