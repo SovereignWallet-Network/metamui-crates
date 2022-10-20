@@ -37,7 +37,7 @@ pub mod pallet {
 		/// Trait to resolve did
 		type DidResolution: DidResolve<Self::AccountId>;
     /// Sudo Origin
-		type SudoOrigin: EnsureOrigin<Self::Origin>;
+		type CallOrigin: EnsureOrigin<Self::Origin>;
 	}
   
   #[pallet::genesis_config]
@@ -95,7 +95,7 @@ pub mod pallet {
   impl<T: Config> Pallet<T> { 
     #[pallet::weight(1)]
     pub fn add_allowed_extrinsic(origin: OriginFor<T>, pallet_name: PalletName, function_name: FunctionName) -> DispatchResultWithPostInfo {
-      T::SudoOrigin::ensure_origin(origin)?;
+      T::CallOrigin::ensure_origin(origin)?;
 			// ensure extrinsic is not already added
 			ensure!(!WhitelistedPallets::<T>::contains_key(pallet_name, function_name), Error::<T>::ExtrinsicAlreadyExists);
 
@@ -106,7 +106,7 @@ pub mod pallet {
           
     #[pallet::weight(1)]
     pub fn remove_allowed_extrinsic(origin: OriginFor<T>, pallet_name: PalletName, function_name: FunctionName) -> DispatchResultWithPostInfo {
-      T::SudoOrigin::ensure_origin(origin)?;
+      T::CallOrigin::ensure_origin(origin)?;
 
 			// ensure extrinsic exists on chain
 			ensure!(WhitelistedPallets::<T>::contains_key(pallet_name, function_name), Error::<T>::ExtrinsicDoesNotExist);

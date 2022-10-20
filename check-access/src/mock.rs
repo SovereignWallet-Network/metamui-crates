@@ -63,7 +63,7 @@ impl pallet_check_access::Config for Test {
 	/// Trait to resolve Did
   type DidResolution = ();
 	/// Sudo Origin
-	type SudoOrigin = EnsureRoot<Self::AccountId>;
+	type CallOrigin = EnsureRoot<Self::AccountId>;
 }
 
 // Build genesis storage according to the mock runtime.
