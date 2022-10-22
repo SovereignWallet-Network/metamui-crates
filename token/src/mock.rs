@@ -2,20 +2,21 @@
 use crate as pallet_token;
 use pallet_balances;
 use pallet_vc;
-use pallet_did;
+use pallet_did::{self, types::{DIdentity, PrivateDid}};
 use codec::Decode;
-use frame_support::{parameter_types, traits::{Everything, ConstU32}, ord_parameter_types};
+use frame_support::{parameter_types, traits::{Everything, ConstU32, GenesisBuild}, ord_parameter_types};
 use frame_system::{self as system, EnsureSignedBy};
-use sp_core::{H256};
+use sp_core::{H256, sr25519, Pair};
 use sp_runtime::{
     DispatchError,
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
 };
+pub type CurrencyCode = [u8; 8];
 use system::{EnsureSigned};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-use metamui_primitives::{Hash, VCid, types::VC as OtherVC, traits::VCResolve};
+use metamui_primitives::{Hash, VCid, types::{VC as OtherVC, PublicKey}, traits::{VCResolve, DidResolve, MultiAddress}, AccountId};
 pub struct VCResolution;
 impl VCResolve<Hash> for VCResolution {
     /// Get VC from VC Id
@@ -35,6 +36,7 @@ impl VCResolve<Hash> for VCResolution {
         Err("Not Implemented".into())
     }
 }
+
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -131,26 +133,52 @@ impl pallet_vc::Config for Test {
 pub const DAVE_ACCOUNT_ID: u64 = 13620103657161844528;
 pub const BOB: [u8; 32] = *b"did:ssid:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 pub const BOB_ACCOUNT_ID: u64 = 7166219960988249998;
+pub const ALICE_ACCOUNT_ID: u64 = 2077282123132384724;
 pub const INITIAL_BALANCE: u64 = 100_000_000_000_000; 
 pub const BOB_SEED: [u8; 32] = [
     57, 143, 12, 40, 249, 136, 133, 224, 70, 51, 61, 74, 65, 193, 156, 238, 76, 55, 54, 138, 152,
     50, 198, 80, 47, 108, 253, 24, 46, 42, 239, 137,
+];
+const DAVE_SEED: [u8; 32] = [
+    134, 128, 32, 174, 6, 135, 221, 167, 213, 117, 101, 9, 58, 105, 9, 2, 17, 68, 152, 69, 167,
+    225, 20, 83, 97, 40, 0, 182, 99, 48, 114, 70,
 ];
 pub const DAVE: [u8; 32] = *b"did:ssid:dave\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut t = system::GenesisConfig::default()
         .build_storage::<Test>()
-        .unwrap().into();
+        .unwrap();
     pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(BOB_ACCOUNT_ID, INITIAL_BALANCE.try_into().unwrap()),(BOB_ACCOUNT_ID, INITIAL_BALANCE)],
+			balances: vec![
+				(BOB_ACCOUNT_ID, INITIAL_BALANCE),
+				(ALICE_ACCOUNT_ID, INITIAL_BALANCE),
+				(DAVE_ACCOUNT_ID, INITIAL_BALANCE),
+		],
     }
+		.assimilate_storage(&mut t)
+    .unwrap();
+
+		pallet_did::GenesisConfig::<Test> { 
+			initial_dids: vec![DIdentity::Private(
+				PrivateDid {
+					identifier: BOB,
+					public_key: sr25519::Pair::from_seed(&BOB_SEED).public(),
+					metadata: Default::default(),
+				},
+			),
+				DIdentity::Private(
+				PrivateDid {
+					identifier: DAVE,
+					public_key: sr25519::Pair::from_seed(&DAVE_SEED).public(),
+					metadata: Default::default(),
+				},
+			)
+			],
+			phantom: Default::default(),
+		}
     .assimilate_storage(&mut t)
     .unwrap();
-    pallet_vc::GenesisConfig::<Test>{
-        initial_vcs: todo!(),
-        phantom: Default::default(),
-    };
 
     t.into()
 }
