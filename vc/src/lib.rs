@@ -106,7 +106,7 @@ pub mod pallet {
 
   /// map to enable lookup from Did to VCids
 	#[pallet::storage]
-  pub type Lookup<T: Config> = StorageMap<_, Blake2_128Concat, Did, Vec<VCid>, ValueQuery>;
+  pub(super) type Lookup<T: Config> = StorageMap<_, Blake2_128Concat, Did, Vec<VCid>, ValueQuery>;
 
 	/// map to enable reverse lookup from VCid to Did
 	#[pallet::storage]
