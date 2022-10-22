@@ -8,6 +8,7 @@ members = [
     "collective",
     "balances",
     "did",
+    "check-access",
     "token",
     "vc"
 ]
