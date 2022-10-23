@@ -16,11 +16,12 @@ pub type CurrencyCode = [u8; 8];
 use system::{EnsureSigned};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-use metamui_primitives::{Hash, VCid, types::{VC as OtherVC, PublicKey}, traits::{VCResolve, DidResolve, MultiAddress}, AccountId};
+use metamui_primitives::{Hash, VCid, types::{VC as VCStruct, PublicKey}, traits::{VCResolve, DidResolve, MultiAddress}};
+pub type AccountId = u64;
 pub struct VCResolution;
 impl VCResolve<Hash> for VCResolution {
     /// Get VC from VC Id
-    fn get_vc(_vc_id: &VCid) -> Option<OtherVC<Hash>> {
+    fn get_vc(vc_id: &VCid) -> Option<VCStruct<Hash>> {
         None
     }
     /// Get if VC is used
@@ -37,6 +38,30 @@ impl VCResolve<Hash> for VCResolution {
     }
 }
 
+pub struct DidResolution;
+impl DidResolve<AccountId> for DidResolution {
+	/// return if an accountId is mapped to a DID
+	fn did_exists(_: MultiAddress<AccountId>) -> bool {
+		true
+	}
+	/// convert DID to accountId
+	fn get_account_id(_: &[u8; 32]) -> Option<AccountId> {
+		None
+	}
+    
+	/// convert accountid to DID
+	fn get_did(_k: &AccountId) -> Option<[u8; 32]> {
+		Some(*b"did:ssid:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
+	}
+	/// get public_key from accountId
+	fn get_public_key(_: &metamui_primitives::Did) -> Option<PublicKey> {
+		Some(sr25519::Pair::from_seed(&BOB_SEED).public())
+	}
+	/// Check if did is public
+	fn is_did_public(_did: &metamui_primitives::Did) -> bool {
+		false
+	}
+}
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -109,7 +134,7 @@ impl pallet_balances::Config for Test {
 	type MaxReserves = ConstU32<2>;
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
-	type DidResolution = Did;
+	type DidResolution = DidResolution;
     type ApproveOrigin = frame_system::EnsureRoot<u64>;
 }
 
@@ -117,8 +142,8 @@ impl pallet_token::Config for Test {
     type Event = Event;
     type WithdrawOrigin = EnsureSigned<Self::AccountId>;
     type Currency = Balances;
-    type DidResolution = ();
-    type VCResolution = ();
+    type DidResolution = DidResolution;
+    type VCResolution = VCResolution;
 }
 
 impl pallet_vc::Config for Test {
@@ -126,24 +151,34 @@ impl pallet_vc::Config for Test {
     type ApproveOrigin = EnsureSignedBy<ValidAccount, u64>;
     type IsCouncilMember= ();
     type IsValidator= ();
-    type DidResolution= ();
+    type DidResolution= DidResolution;
 
 }
 
-pub const DAVE_ACCOUNT_ID: u64 = 13620103657161844528;
-pub const BOB: [u8; 32] = *b"did:ssid:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-pub const BOB_ACCOUNT_ID: u64 = 7166219960988249998;
+pub const ALICE: metamui_primitives::Did = *b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+pub const BOB: metamui_primitives::Did = *b"did:ssid:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+pub const DAVE: metamui_primitives::Did = *b"did:ssid:dave\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 pub const ALICE_ACCOUNT_ID: u64 = 2077282123132384724;
-pub const INITIAL_BALANCE: u64 = 100_000_000_000_000; 
+pub const BOB_ACCOUNT_ID: u64 = 7166219960988249998;
+pub const DAVE_ACCOUNT_ID: u64 = 13620103657161844528;
+pub const INITIAL_BALANCE: u64 = 100_000_000_000_000; // 100 million MUI
+pub const TREASURY_RESERVE_AMOUNT: u128 = 10_000_000_000_000; //10 million MUI - consider 6decimal places
+pub const ALICE_SEED: [u8; 32] = [
+    229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
+    187, 122, 144, 149, 79, 123, 118, 54, 31, 110, 219, 92, 10,
+];
 pub const BOB_SEED: [u8; 32] = [
     57, 143, 12, 40, 249, 136, 133, 224, 70, 51, 61, 74, 65, 193, 156, 238, 76, 55, 54, 138, 152,
     50, 198, 80, 47, 108, 253, 24, 46, 42, 239, 137,
 ];
-const DAVE_SEED: [u8; 32] = [
+pub const DAVE_SEED: [u8; 32] = [
     134, 128, 32, 174, 6, 135, 221, 167, 213, 117, 101, 9, 58, 105, 9, 2, 17, 68, 152, 69, 167,
     225, 20, 83, 97, 40, 0, 182, 99, 48, 114, 70,
 ];
-pub const DAVE: [u8; 32] = *b"did:ssid:dave\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+pub const VALIDATOR_ACCOUNT: u64 = 0;
+pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:Alice\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+pub const VALIDATOR_PUBKEY: sr25519::Public = sr25519::Public([0; 32]);
+
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut t = system::GenesisConfig::default()
@@ -152,8 +187,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(BOB_ACCOUNT_ID, INITIAL_BALANCE),
-				(ALICE_ACCOUNT_ID, INITIAL_BALANCE),
-				(DAVE_ACCOUNT_ID, INITIAL_BALANCE),
+                (ALICE_ACCOUNT_ID, INITIAL_BALANCE),
 		],
     }
 		.assimilate_storage(&mut t)
@@ -169,8 +203,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			),
 				DIdentity::Private(
 				PrivateDid {
-					identifier: DAVE,
-					public_key: sr25519::Pair::from_seed(&DAVE_SEED).public(),
+					identifier: ALICE,
+					public_key: sr25519::Pair::from_seed(&ALICE_SEED).public(),
 					metadata: Default::default(),
 				},
 			)
