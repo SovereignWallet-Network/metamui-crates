@@ -155,6 +155,7 @@ const BOB: metamui_primitives::Did = *b"did:ssid:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0
 const DAVE: metamui_primitives::Did = *b"did:ssid:dave\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 const EVE: metamui_primitives::Did = *b"did:ssid:eve\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 const ALICE_ACCOUNT_ID: u64 = 2077282123132384724;
+pub const DAVE_ACCOUNT_ID: u64 = 13620103657161844528;
 const BOB_ACCOUNT_ID: u64 = 7166219960988249998;
 const ALICE_SEED: [u8; 32] = [
 	229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
@@ -202,7 +203,7 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	// .unwrap();
 
 	pallet_validator_set::GenesisConfig::<Test> {
-		members: frame_support::bounded_vec![[10; 32], [20; 32], [30; 32]],
+		members: frame_support::bounded_vec![BOB, DAVE],
 		phantom: Default::default(),
 	}
 	.assimilate_storage(&mut o)
@@ -210,8 +211,8 @@ fn new_test_ext() -> sp_io::TestExternalities {
 
 	pallet_did::GenesisConfig::<Test> {
 		initial_dids: vec![DIdentity::Private(PrivateDid {
-			identifier: VALIDATOR_DID,
-			public_key: VALIDATOR_PUBKEY,
+			identifier: BOB,
+			public_key: sr25519::Pair::from_seed(&BOB_SEED).public(),
 			metadata: Default::default(),
 		})],
 
@@ -267,14 +268,14 @@ fn convert_to_array<const N: usize>(mut v: Vec<u8>) -> [u8; N] {
 #[test]
 fn test_store() {
 	new_test_ext().execute_with(|| {
-		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
 
-		let did_vc = PrivateDidVC { public_key: pair.public(), did: VALIDATOR_DID };
+		let did_vc = PrivateDidVC { public_key: pair.public(), did: DAVE };
 
 		let did_vc: [u8; 128] = convert_to_array::<128>(did_vc.encode());
 		let vc_type = VCType::PrivateDidVC;
-		let owner = VALIDATOR_DID;
-		let issuers = vec![VALIDATOR_DID];
+		let owner = BOB;
+		let issuers = vec![DAVE];
 		let hash = BlakeTwo256::hash_of(&(&vc_type, &did_vc, &owner, &issuers));
 		let signature = pair.sign(hash.as_ref());
 
@@ -289,7 +290,7 @@ fn test_store() {
 			is_vc_active: false,
 		};
 
-		assert_ok!(VC::store(Origin::signed(VALIDATOR_ACCOUNT), vc.encode()));
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
 
 		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
 

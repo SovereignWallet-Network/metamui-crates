@@ -20,8 +20,8 @@ use metamui_primitives::{
 use sp_std::{ prelude::*, vec };
 use sr25519::Signature;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 mod impls;
 
