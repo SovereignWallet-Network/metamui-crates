@@ -18,10 +18,11 @@ use metamui_primitives::{
 };
 pub use pallet::*;
 
-// #[cfg(test)]
-// mod mock;
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -158,7 +159,6 @@ pub mod pallet {
 
 			Ok(().into())
 		}
-
 		#[pallet::weight(1)]
 		pub fn transfer_token(
 			origin: OriginFor<T>,
@@ -327,7 +327,13 @@ impl<T: Config> StoredMap<T::AccountId, T::AccountData> for Pallet<T> {
 				*maybe_value = maybe_data.map(|data| {
 					let (nonce, consumers, providers, sufficients) =
 						maybe_prefix.unwrap_or_default();
-					AccountInfo { nonce, consumers, providers, sufficients, data }
+					AccountInfo{ 
+						nonce, 
+						consumers, 
+						providers, 
+						sufficients, 
+						data 
+					}
 				});
 				(existed, maybe_value.is_some(), result)
 			})
