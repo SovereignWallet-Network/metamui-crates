@@ -3,7 +3,7 @@ use super::*;
 
 use frame_system as system;
 use frame_support::{
-	traits::{ ConstU16, ConstU32, ConstU64 },
+	traits::{ GenesisBuild, ConstU16, ConstU32, ConstU64 },
 };
 use sp_core::H256;
 use sp_runtime::{
@@ -12,8 +12,10 @@ use sp_runtime::{
 };
 use system::EnsureRoot;
 
-pub const PALLET_NAME: [u8;32] = [0;32];
-pub const FUNCTION_NAME: [u8;32] = [1;32];
+pub const FIRST_PALLET_NAME: [u8;32] = [0;32];
+pub const FIRST_FUNCTION_NAME: [u8;32] = [1;32];
+pub const SECOND_PALLET_NAME: [u8; 32] = [2; 32];
+pub const SECOND_FUNCTION_NAME: [u8; 32] = [3; 32];
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -68,8 +70,19 @@ impl pallet_check_access::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let o = frame_system::GenesisConfig::default()
+	let mut o = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
+
+		super::GenesisConfig::<Test> { 
+			initial_extrinsics: vec![InitialExtrinsics {
+					pallet_name: FIRST_PALLET_NAME,
+					function_name: FIRST_FUNCTION_NAME
+				}
+			],
+			phantom: Default::default(),
+		}
+			.assimilate_storage(&mut o)
+			.unwrap();
   o.into()
 }
