@@ -3,7 +3,7 @@ use crate::{
 	mock::{Balances, Token, VC, *},
 	types::*,
 };
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
 use metamui_primitives::types::{SlashMintTokens, VC as VCStruct};
 use pallet_vc;
 use sp_core::{sr25519, Pair, H256};
@@ -80,7 +80,6 @@ fn test_mint_token() {
 }
 
 #[test]
-#[should_panic]
 fn test_mint_token_fails() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
@@ -149,13 +148,14 @@ fn test_mint_token_fails() {
 		assert_eq!(Balances::total_issuance(), (token_amount + mint_amount) as u64);
 
 		// checking mint token vc works after being used
-		assert_ok!(Token::mint_token(Origin::signed(BOB_ACCOUNT_ID), vc_id));
+		assert_noop!(
+			Token::mint_token(Origin::signed(BOB_ACCOUNT_ID), vc_id),
+			Error::<Test>::VCAlreadyUsed
+		);
 	});
 }
 
-
 #[test]
-#[should_panic]
 fn test_mint_token_fails_invalidvc() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
@@ -217,8 +217,10 @@ fn test_mint_token_fails_invalidvc() {
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc_struct.encode()));
 		let vc_id = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
 
-		assert_ok!(Token::mint_token(Origin::signed(BOB_ACCOUNT_ID), vc_id));
-
+		assert_noop!(
+			Token::mint_token(Origin::signed(BOB_ACCOUNT_ID), vc_id),
+			Error::<Test>::InvalidVC
+		);
 	});
 }
 
@@ -293,7 +295,6 @@ fn test_slash_token() {
 }
 
 #[test]
-#[should_panic]
 fn test_slash_token_fails() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
@@ -362,12 +363,14 @@ fn test_slash_token_fails() {
 		assert_eq!(Balances::total_issuance(), (token_amount - slash_amount) as u64);
 
 		// checking slash token vc works after being used
-		assert_ok!(Token::slash_token(Origin::signed(BOB_ACCOUNT_ID), vc_id));
+		assert_noop!(
+			Token::slash_token(Origin::signed(BOB_ACCOUNT_ID), vc_id),
+			Error::<Test>::VCAlreadyUsed
+		);
 	});
 }
 
 #[test]
-#[should_panic]
 fn test_slash_token_fails_invalidvc() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
@@ -429,12 +432,14 @@ fn test_slash_token_fails_invalidvc() {
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc_struct.encode()));
 		let vc_id = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
 
-		assert_ok!(Token::slash_token(Origin::signed(BOB_ACCOUNT_ID), vc_id));
+		assert_noop!(
+			Token::slash_token(Origin::signed(BOB_ACCOUNT_ID), vc_id),
+			Error::<Test>::InvalidVC
+		);
 	});
 }
 
 #[test]
-#[should_panic]
 fn test_slash_token_fails_lowbalance() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
@@ -496,17 +501,18 @@ fn test_slash_token_fails_lowbalance() {
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc_struct.encode()));
 		let vc_id = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
 
-		assert_ok!(Token::slash_token(Origin::signed(BOB_ACCOUNT_ID), vc_id));
+		assert_noop!(
+			Token::slash_token(Origin::signed(BOB_ACCOUNT_ID), vc_id),
+			Error::<Test>::BalanceTooLow
+		);
 	});
 }
-
 
 #[test]
 fn test_withdraw_reserve_works() {
 	new_test_ext().execute_with(|| {
 		let reservable_balance: u128 = 1_000_000;
 		let token_amount: u128 = 5_000_000;
-		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
 		let token_vc = pallet_vc::TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance,
@@ -534,8 +540,6 @@ fn test_withdraw_reserve_works() {
 		};
 
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc_struct.encode()));
-
-		let vc_id = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
 
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
@@ -559,12 +563,10 @@ fn test_withdraw_reserve_works() {
 }
 
 #[test]
-#[should_panic]
 fn test_withdraw_reserve_fails() {
 	new_test_ext().execute_with(|| {
 		let reservable_balance: u128 = 1_000_000;
 		let token_amount: u128 = 5_000_000;
-		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
 		let token_vc = pallet_vc::TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance,
@@ -593,11 +595,12 @@ fn test_withdraw_reserve_fails() {
 
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc_struct.encode()));
 
-		let vc_id = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
-
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
-		assert_ok!(Token::withdraw_reserved(Origin::signed(BOB_ACCOUNT_ID), ALICE, BOB, 1_000_000));
+		assert_noop!(
+			Token::withdraw_reserved(Origin::signed(BOB_ACCOUNT_ID), ALICE, BOB, 1_000_000),
+			Error::<Test>::DIDDoesNotExist
+		);
 	});
 }
 
@@ -662,7 +665,7 @@ fn test_transfer_token_works() {
 
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc_struct.encode()));
 		let vc_id = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
-		
+
 		assert_ok!(Token::transfer_token(Origin::signed(BOB_ACCOUNT_ID), vc_id, DAVE));
 
 		// check balance transfer worked correctly
@@ -672,9 +675,7 @@ fn test_transfer_token_works() {
 	});
 }
 
-
 #[test]
-#[should_panic]
 fn test_transfer_token_fails_lowbalance() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
@@ -735,14 +736,15 @@ fn test_transfer_token_fails_lowbalance() {
 
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc_struct.encode()));
 		let vc_id = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
-		
-		assert_ok!(Token::transfer_token(Origin::signed(BOB_ACCOUNT_ID), vc_id, DAVE));
+
+		assert_noop!(
+			Token::transfer_token(Origin::signed(BOB_ACCOUNT_ID), vc_id, DAVE),
+			pallet_balances::Error::<Test>::InsufficientBalance
+		);
 	});
 }
 
-
 #[test]
-#[should_panic]
 fn test_transfer_token_fails_invalidvc() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
@@ -803,7 +805,10 @@ fn test_transfer_token_fails_invalidvc() {
 
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc_struct.encode()));
 		let vc_id = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
-		
-		assert_ok!(Token::transfer_token(Origin::signed(BOB_ACCOUNT_ID), vc_id, DAVE));
+
+		assert_noop!(
+			Token::transfer_token(Origin::signed(BOB_ACCOUNT_ID), vc_id, DAVE),
+			Error::<Test>::InvalidVC
+		);
 	});
 }
