@@ -52,7 +52,7 @@ impl DidResolve<AccountId> for DidResolution {
 		None
 	}
 	/// Check if did is public
-	fn is_did_public(did: &Did) -> bool {
+	fn is_did_public(_did: &Did) -> bool {
 		false
 	}
 }

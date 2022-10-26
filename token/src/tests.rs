@@ -1,7 +1,6 @@
 use super::*;
 use crate::{
 	mock::{Balances, Token, VC, *},
-	types::*,
 };
 use frame_support::{assert_noop, assert_ok};
 use metamui_primitives::types::{SlashMintTokens, VC as VCStruct};
