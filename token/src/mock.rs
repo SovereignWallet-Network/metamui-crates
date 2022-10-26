@@ -17,51 +17,6 @@ use system::{EnsureSigned};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 use metamui_primitives::{Hash, VCid, types::{VC as VCStruct, PublicKey}, traits::{VCResolve, DidResolve, MultiAddress}};
-pub type AccountId = u64;
-pub struct VCResolution;
-impl VCResolve<Hash> for VCResolution {
-    /// Get VC from VC Id
-    fn get_vc(vc_id: &VCid) -> Option<VCStruct<Hash>> {
-        None
-    }
-    /// Get if VC is used
-    fn is_vc_used(_vc_id: &VCid) -> bool {
-        true
-    }
-    /// Set VC used
-    fn set_is_vc_used(_vc_id: &VCid, _is_vc_used: bool) {
-        ()
-    }
-    /// Decode VC
-    fn decode_vc<E: Decode>(_vc_bytes: &[u8]) -> Result<E, DispatchError> {
-        Err("Not Implemented".into())
-    }
-}
-
-pub struct DidResolution;
-impl DidResolve<AccountId> for DidResolution {
-	/// return if an accountId is mapped to a DID
-	fn did_exists(_: MultiAddress<AccountId>) -> bool {
-		true
-	}
-	/// convert DID to accountId
-	fn get_account_id(_: &[u8; 32]) -> Option<AccountId> {
-		None
-	}
-    
-	/// convert accountid to DID
-	fn get_did(_k: &AccountId) -> Option<[u8; 32]> {
-		Some(*b"did:ssid:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
-	}
-	/// get public_key from accountId
-	fn get_public_key(_: &metamui_primitives::Did) -> Option<PublicKey> {
-		Some(sr25519::Pair::from_seed(&BOB_SEED).public())
-	}
-	/// Check if did is public
-	fn is_did_public(_did: &metamui_primitives::Did) -> bool {
-		false
-	}
-}
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -120,7 +75,7 @@ impl pallet_did::Config for Test {
 	type ValidatorOrigin = EnsureSigned<Self::AccountId>;
 	type MaxKeyChanges = ConstU32<16>;
 	type OnDidUpdate = ();
-    type VCResolution= VCResolution;
+    type VCResolution= VC;
 }
 
 
@@ -134,7 +89,7 @@ impl pallet_balances::Config for Test {
 	type MaxReserves = ConstU32<2>;
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
-	type DidResolution = DidResolution;
+	type DidResolution = Did;
     type ApproveOrigin = frame_system::EnsureRoot<u64>;
 }
 
@@ -142,8 +97,8 @@ impl pallet_token::Config for Test {
     type Event = Event;
     type WithdrawOrigin = EnsureSigned<Self::AccountId>;
     type Currency = Balances;
-    type DidResolution = DidResolution;
-    type VCResolution = VCResolution;
+    type DidResolution = Did;
+    type VCResolution = VC;
 }
 
 impl pallet_vc::Config for Test {
@@ -151,7 +106,7 @@ impl pallet_vc::Config for Test {
     type ApproveOrigin = EnsureSignedBy<ValidAccount, u64>;
     type IsCouncilMember= ();
     type IsValidator= ();
-    type DidResolution= DidResolution;
+    type DidResolution= Did;
 
 }
 
@@ -161,7 +116,7 @@ pub const DAVE: metamui_primitives::Did = *b"did:ssid:dave\0\0\0\0\0\0\0\0\0\0\0
 pub const ALICE_ACCOUNT_ID: u64 = 2077282123132384724;
 pub const BOB_ACCOUNT_ID: u64 = 7166219960988249998;
 pub const DAVE_ACCOUNT_ID: u64 = 13620103657161844528;
-pub const INITIAL_BALANCE: u64 = 100_000_000_000_000; // 100 million MUI
+pub const INITIAL_BALANCE: u64 = 0; // 100 million MUI
 pub const TREASURY_RESERVE_AMOUNT: u128 = 10_000_000_000_000; //10 million MUI - consider 6decimal places
 pub const ALICE_SEED: [u8; 32] = [
     229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
@@ -203,8 +158,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			),
 				DIdentity::Private(
 				PrivateDid {
-					identifier: ALICE,
-					public_key: sr25519::Pair::from_seed(&ALICE_SEED).public(),
+					identifier: DAVE,
+					public_key: sr25519::Pair::from_seed(&DAVE_SEED).public(),
 					metadata: Default::default(),
 				},
 			)
