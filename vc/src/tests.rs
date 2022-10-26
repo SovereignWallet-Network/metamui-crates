@@ -91,7 +91,7 @@ ord_parameter_types! {
 	pub const Three: u64 = 3;
 	pub const Four: u64 = 4;
 	pub const Five: u64 = 5;
-	pub const Six: u64 = 5;
+	pub const Six: u64 = 6;
 }
 
 impl pallet_validator_set::Config for Test {
@@ -173,27 +173,6 @@ const EVE_SEED: [u8; 32] = [
 // our desired mockup.
 fn new_test_ext() -> sp_io::TestExternalities {
 	let mut o = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-	// let vc: Vec<u8> = vec![
-	//     65, 108, 105, 99, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	// 0,     0, 0, 0, 0, 65, 108, 105, 99, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	// 0, 0,     0, 0, 0, 0, 0, 0, 0, 0, 252, 48, 108, 23, 89, 14, 11, 176, 20, 20, 127, 49, 19, 39,
-	// 250,     139, 21, 93, 151, 92, 223, 184, 79, 121, 58, 205, 209, 146, 217, 162, 229, 89, 0,
-	// 188, 126,     39, 174, 121, 218, 194, 177, 241, 52, 236, 12, 23, 109, 17, 189, 18, 217, 32,
-	// 212, 161, 19,     146, 184, 151, 105, 127, 117, 166, 226, 194, 8, 32, 11, 234, 171, 157, 238,
-	// 181, 242, 28,     186, 194, 248, 72, 187, 234, 120, 167, 193, 252, 153, 117, 74, 171, 197, 5,
-	// 51, 34, 153,     238, 130, 187, 73, 62, 218, 54, 238, 25, 197, 216, 225, 168, 235, 123, 41,
-	// 83, 37, 67, 253,     185, 1, 168, 184, 49, 226, 45, 108, 219, 108, 88, 130, 255, 152, 119,
-	// 130, 1, ];
-
-	// super::GenesisConfig {
-	//     init_vcs: vec![InitialVCs {
-	//         identifier: ALICE,
-	//         public_key: pair.public(),
-	//         vcs: vec![vc],
-	//     }],
-	// }
-	// .assimilate_storage::<Test>(&mut o)
-	// .unwrap();
 
 	pallet_validator_set::GenesisConfig::<Test> {
 		members: frame_support::bounded_vec![BOB, DAVE],
@@ -240,29 +219,6 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	o.into()
 }
 
-// #[test]
-// fn test_genesis_worked() {
-//     new_test_ext().execute_with(|| {
-//         assert!(VCs::<Test>::contains_key(ALICE));
-//         assert!(DIDs::<Test>::contains_key(ALICE_ACCOUNT_ID));
-//         assert!(RLookup::<Test>::contains_key(ALICE_ACCOUNT_ID));
-
-//         let genesis_vc: Vec<u8> = vec![
-//             65, 108, 105, 99, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-//             0, 0, 0, 0, 0, 0, 65, 108, 105, 99, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-//             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 252, 48, 108, 23, 89, 14, 11, 176, 20, 20, 127,
-// 49,             19, 39, 250, 139, 21, 93, 151, 92, 223, 184, 79, 121, 58, 205, 209, 146, 217,
-// 162, 229,             89, 0, 188, 126, 39, 174, 121, 218, 194, 177, 241, 52, 236, 12, 23, 109,
-// 17, 189, 18,             217, 32, 212, 161, 19, 146, 184, 151, 105, 127, 117, 166, 226, 194, 8,
-// 32, 11, 234,             171, 157, 238, 181, 242, 28, 186, 194, 248, 72, 187, 234, 120, 167, 193,
-// 252, 153, 117,             74, 171, 197, 5, 51, 34, 153, 238, 130, 187, 73, 62, 218, 54, 238, 25,
-// 197, 216, 225,             168, 235, 123, 41, 83, 37, 67, 253, 185, 1, 168, 184, 49, 226, 45,
-// 108, 219, 108, 88,             130, 255, 152, 119, 130, 1,
-//         ];
-//         assert!(Members::get().contains(&genesis_vc));
-//         assert!(Lookup::<Test>::contains_key(genesis_vc));
-//     })
-// }
 
 fn convert_to_array<const N: usize>(mut v: Vec<u8>) -> [u8; N] {
 	if v.len() != N {
@@ -315,7 +271,6 @@ fn test_store() {
 }
 
 #[test]
-#[should_panic]
 fn test_invalid_owner_vc() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -372,7 +327,9 @@ fn test_invalid_owner_vc() {
 			vc_property: mint_vc,
 		};
 		// Since the owner Did (Dave) is not registered, this should fail
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::DidDoesNotExist
+	);
 	})
 }
 
@@ -443,7 +400,6 @@ fn test_mint_vc_store() {
 }
 
 #[test]
-#[should_panic]
 fn test_cccode_validation() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -473,7 +429,9 @@ fn test_cccode_validation() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::InvalidCurrencyCode
+	);
 
 		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
@@ -494,7 +452,9 @@ fn test_cccode_validation() {
 			is_vc_active: true,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::InvalidCurrencyCode
+	);
 
 		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
@@ -515,7 +475,9 @@ fn test_cccode_validation() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::InvalidCurrencyCode
+	);
 	})
 }
 
@@ -560,7 +522,6 @@ fn test_update_status() {
 }
 
 #[test]
-#[should_panic]
 fn test_store_vc_with_different_account() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -590,12 +551,13 @@ fn test_store_vc_with_different_account() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(NON_VALIDATOR_ACCOUNT), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(NON_VALIDATOR_ACCOUNT), vc.encode()),
+		DispatchError::BadOrigin
+	);
 	})
 }
 
 #[test]
-#[should_panic]
 fn test_store_vc_with_wrong_hash() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -624,12 +586,13 @@ fn test_store_vc_with_wrong_hash() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::VCPropertiesNotVerified
+	);
 	})
 }
 
 #[test]
-#[should_panic]
 fn test_store_vc_with_wrong_signature() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -660,12 +623,13 @@ fn test_store_vc_with_wrong_signature() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::InvalidSignature
+	);
 	})
 }
 
 #[test]
-#[should_panic]
 fn test_store_vc_less_approvers() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -696,12 +660,13 @@ fn test_store_vc_less_approvers() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::InvalidSignature
+	);
 	})
 }
 
 #[test]
-#[should_panic]
 fn test_update_status_sender() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -737,10 +702,14 @@ fn test_update_status_sender() {
 		let non_issuer = VALIDATOR_ACCOUNT;
 
 		// Updating status flag with non issuer account
-		assert_ok!(VC::update_status(Origin::signed(non_issuer), vc_id, vc.is_vc_active));
+		assert_noop!(VC::update_status(Origin::signed(non_issuer), vc_id, vc.is_vc_active),
+		Error::<Test>::NotAValidatorNorIssuer
+	);
 
 		// Updating status flag with non validator account
-		assert_ok!(VC::update_status(Origin::signed(VALIDATOR_ACCOUNT), vc_id, vc.is_vc_active));
+		assert_noop!(VC::update_status(Origin::signed(VALIDATOR_ACCOUNT), vc_id, vc.is_vc_active),
+		Error::<Test>::NotAValidatorNorIssuer
+	);
 	})
 }
 
@@ -942,7 +911,6 @@ fn test_set_is_used_flag() {
 }
 
 #[test]
-#[should_panic]
 fn test_duplicate_issuers_signatures() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -973,7 +941,8 @@ fn test_duplicate_issuers_signatures() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::DuplicateSignature);
 
 		// case when duplicate issuers are present
 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
@@ -994,12 +963,13 @@ fn test_duplicate_issuers_signatures() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::DuplicateSignature
+	);
 	})
 }
 
 #[test]
-#[should_panic]
 fn test_add_duplicate_issuer_signatures() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -1033,7 +1003,9 @@ fn test_add_duplicate_issuer_signatures() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::DuplicateSignature
+	);
 
 		let dave_sign = dave_pair.sign(hash.as_ref());
 
@@ -1048,7 +1020,9 @@ fn test_add_duplicate_issuer_signatures() {
 			vc_property: token_vc,
 		};
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
+		Error::<Test>::InvalidSignature
+	);
 
 		let vc: VCStruct<H256> = VCStruct {
 			hash,
@@ -1065,7 +1039,9 @@ fn test_add_duplicate_issuer_signatures() {
 
 		let vc_id = Lookup::<Test>::get(&BOB)[0];
 
-		assert_ok!(VC::add_signature(Origin::signed(DAVE_ACCOUNT_ID), vc_id, duplicate_signature));
+		assert_noop!(VC::add_signature(Origin::signed(DAVE_ACCOUNT_ID), vc_id, duplicate_signature),
+		Error::<Test>::DuplicateSignature,
+	);
 	})
 }
 
@@ -1114,7 +1090,6 @@ fn test_generic_vc_store() {
 }
 
 #[test]
-#[should_panic]
 fn test_vc_already_exists() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -1146,12 +1121,11 @@ fn test_vc_already_exists() {
 
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
 
-		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+		assert_noop!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()), Error::<Test>::VCAlreadyExists);
 	})
 }
 
 #[test]
-#[should_panic]
 fn test_invalid_signature_for_add_signature() {
 	new_test_ext().execute_with(|| {
 		let bob_pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
@@ -1187,6 +1161,6 @@ fn test_invalid_signature_for_add_signature() {
 
 		assert_ok!(VC::validate_sign(&vc, dave_sign.clone(), vc_id));
 		//Error will occur If signed by someone who is not issuer, Signature will be invalid!
-		assert_ok!(VC::validate_sign(&vc, bob_sign.clone(), vc_id));
+		assert_noop!(VC::validate_sign(&vc, bob_sign.clone(), vc_id), Error::<Test>::InvalidSignature);
 	})
 }
