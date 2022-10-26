@@ -20,7 +20,7 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 
 # Metamui
-metamui-primitives = { git = "https://github.com/SovereignWallet-Network/metamui-crates", branch = "main", default-features = false }
+metamui-primitives = { default-features = false, path = '../metamui-primitives', version = '0.0.1' }
 
 [dev-dependencies]
 serde = { version = "1.0.132" }
