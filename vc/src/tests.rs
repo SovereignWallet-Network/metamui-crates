@@ -515,9 +515,9 @@ fn test_update_status() {
 
 		let vc_id = Lookup::<Test>::get(&BOB)[0];
 		// Updating status flag
-		assert_ok!(VC::update_status(Origin::signed(BOB_ACCOUNT_ID), vc_id, vc.is_vc_active));
-
-		assert_eq!(VCs::<Test>::get(vc_id), Some(vc));
+		assert_ok!(VC::update_status(Origin::signed(BOB_ACCOUNT_ID), vc_id, false));
+ 
+		assert_eq!((VCs::<Test>::get(vc_id)).unwrap().is_vc_active, false);
 	})
 }
 
