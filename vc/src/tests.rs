@@ -154,13 +154,8 @@ const ALICE: metamui_primitives::Did = *b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0
 const BOB: metamui_primitives::Did = *b"did:ssid:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 const DAVE: metamui_primitives::Did = *b"did:ssid:dave\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 const EVE: metamui_primitives::Did = *b"did:ssid:eve\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-const ALICE_ACCOUNT_ID: u64 = 2077282123132384724;
 pub const DAVE_ACCOUNT_ID: u64 = 13620103657161844528;
 const BOB_ACCOUNT_ID: u64 = 7166219960988249998;
-const ALICE_SEED: [u8; 32] = [
-	229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
-	187, 122, 144, 149, 79, 123, 118, 54, 31, 110, 219, 92, 10,
-];
 const BOB_SEED: [u8; 32] = [
 	57, 143, 12, 40, 249, 136, 133, 224, 70, 51, 61, 74, 65, 193, 156, 238, 76, 55, 54, 138, 152,
 	50, 198, 80, 47, 108, 253, 24, 46, 42, 239, 137,
@@ -178,8 +173,6 @@ const EVE_SEED: [u8; 32] = [
 // our desired mockup.
 fn new_test_ext() -> sp_io::TestExternalities {
 	let mut o = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-
-	let pair: sr25519::Pair = sr25519::Pair::from_seed(&ALICE_SEED);
 	// let vc: Vec<u8> = vec![
 	//     65, 108, 105, 99, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	// 0,     0, 0, 0, 0, 65, 108, 105, 99, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -210,11 +203,28 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	.unwrap();
 
 	pallet_did::GenesisConfig::<Test> {
-		initial_dids: vec![DIdentity::Private(PrivateDid {
-			identifier: BOB,
-			public_key: sr25519::Pair::from_seed(&BOB_SEED).public(),
-			metadata: Default::default(),
-		})],
+		initial_dids: vec![
+			DIdentity::Private(PrivateDid {
+				identifier: BOB,
+				public_key: sr25519::Pair::from_seed(&BOB_SEED).public(),
+				metadata: Default::default(),
+			}),
+			DIdentity::Private(PrivateDid {
+				identifier: DAVE,
+				public_key: sr25519::Pair::from_seed(&DAVE_SEED).public(),
+				metadata: Default::default(),
+			}),
+			DIdentity::Private(PrivateDid {
+				identifier: VALIDATOR_DID,
+				public_key: VALIDATOR_PUBKEY,
+				metadata: Default::default(),
+			}),
+			DIdentity::Private(PrivateDid {
+				identifier: EVE,
+				public_key: sr25519::Pair::from_seed(&EVE_SEED).public(),
+				metadata: Default::default(),
+			}),
+		],
 
 		phantom: Default::default(),
 	}
@@ -268,34 +278,34 @@ fn convert_to_array<const N: usize>(mut v: Vec<u8>) -> [u8; N] {
 #[test]
 fn test_store() {
 	new_test_ext().execute_with(|| {
-		let pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
 
-		let did_vc = PrivateDidVC { public_key: pair.public(), did: DAVE };
-
-		let did_vc: [u8; 128] = convert_to_array::<128>(did_vc.encode());
-		let vc_type = VCType::PrivateDidVC;
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
 		let owner = BOB;
-		let issuers = vec![DAVE];
-		let hash = BlakeTwo256::hash_of(&(&vc_type, &did_vc, &owner, &issuers));
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
 		let signature = pair.sign(hash.as_ref());
 
 		let vc: VCStruct<H256> = VCStruct {
 			hash,
-			signatures: vec![signature],
-			vc_type,
 			owner,
 			issuers,
+			signatures: vec![signature],
 			is_vc_used: true,
-			vc_property: did_vc,
-			is_vc_active: false,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
 		};
 
 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
 		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
-
-		assert_ok!(Did::create_private(Origin::signed(ALICE_ACCOUNT_ID), vc_id, None));
-
 		let did = RLookup::<Test>::get(vc_id);
 		assert_eq!(did, BOB);
 		assert_eq!(Lookup::<Test>::get(did), vec![vc_id]);
@@ -304,990 +314,879 @@ fn test_store() {
 	})
 }
 
-// #[test]
-// fn test_invalid_owner_vc() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: metamui_primitives::VC<H256> = metamui_primitives::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-//     is_vc_active: false,
-// 		};
-
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
-// 		let did = RLookup::get(vc_id);
-// 		assert_eq!(did, BOB);
-// 		assert_eq!(Lookup::get(did), vec![vc_id]);
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Active)));
-// 		assert_eq!(VCHistory::<Test>::get(vc_id), Some((VCStatus::Active, 0)));
-
-// 		// Test MintVC
-// 		let vc_type = VCType::MintTokens;
-// 		let owner = DAVE;
-// 		let issuers = vec![BOB];
-// 		let mint_vc = SlashMintTokens {
-// 			vc_id,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 			amount: 1000,
-// 		};
-// 		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &mint_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: false,
-// 			vc_property: mint_vc,
-// 		};
-// 		// Since the owner Did (Dave) is not registered, this should fail
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			did::Error::<Test>::DIDDoesNotExist
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_mint_vc_store() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
-// 		let did = RLookup::get(vc_id);
-// 		assert_eq!(did, BOB);
-// 		assert_eq!(Lookup::get(did), vec![vc_id]);
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Active)));
-// 		assert_eq!(VCHistory::<Test>::get(vc_id), Some((VCStatus::Active, 0)));
-
-// 		// Add Dave's Did for MintVC
-// 		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
-// 		let dave_public_key = dave_pair.public();
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), dave_public_key, DAVE, Vec::new()));
-// 		let vc_type = VCType::MintTokens;
-// 		let owner = DAVE;
-// 		let issuers = vec![BOB];
-// 		let mint_vc = SlashMintTokens {
-// 			vc_id,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 			amount: 1000,
-// 		};
-// 		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &mint_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: false,
-// 			vc_property: mint_vc,
-// 		};
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
-// 		let did = RLookup::get(vc_id);
-// 		assert_eq!(did, DAVE);
-// 		assert_eq!(Lookup::get(did), vec![vc_id]);
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Active)));
-// 		assert_eq!(VCHistory::<Test>::get(vc_id), Some((VCStatus::Active, 0)))
-// 	})
-// }
-
-// #[test]
-// fn test_cccode_validation() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTHs".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner,
-// 			issuers: issuers.clone(),
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::InvalidCurrencyCode
-// 		);
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>(" OT H".into()),
-// 		};
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner,
-// 			issuers: issuers.clone(),
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::InvalidCurrencyCode
-// 		);
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("1OTH".into()),
-// 		};
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::InvalidCurrencyCode
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_update_status() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		// Adding did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = Lookup::get(&BOB)[0];
-// 		// Updating status flag
-// 		assert_ok!(VC::update_status(Origin::signed(ALICE_ACCOUNT_ID), vc_id, VCStatus::Inactive));
-
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc, VCStatus::Inactive)));
-// 	})
-// }
-
-// #[test]
-// fn test_store_vc_with_different_account() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		// Adding did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(NON_VALIDATOR_ACCOUNT), vc.encode()),
-// 			DispatchError::BadOrigin
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_store_vc_with_wrong_hash() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		// Adding did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		// Wrong Hash
-// 		let hash = H256::zero();
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner: BOB,
-// 			issuers: vec![BOB],
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::VCPropertiesNotVerified
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_store_vc_with_wrong_signature() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		// Adding did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let wrong_hash = H256::zero();
-// 		let signature = pair.sign(wrong_hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::InvalidSignature
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_store_vc_less_approvers() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		// Adding did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB, ALICE];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let wrong_hash = H256::zero();
-// 		let signature = pair.sign(wrong_hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::InvalidSignature
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_update_status_sender() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		// Adding did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = Lookup::get(&BOB)[0];
-// 		let non_issuer = 0;
-
-// 		// Updating status flag with non issuer account
-// 		assert_noop!(
-// 			VC::update_status(Origin::signed(non_issuer), vc_id, VCStatus::Inactive),
-// 			Error::<Test>::NotAValidatorNorIssuer
-// 		);
-
-// 		// Updating status flag with non validator account
-// 		assert_noop!(
-// 			VC::update_status(Origin::signed(NON_VALIDATOR_ACCOUNT), vc_id, VCStatus::Inactive),
-// 			Error::<Test>::NotAValidatorNorIssuer
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_add_signature() {
-// 	new_test_ext().execute_with(|| {
-// 		let bob_pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let bob_public_key = bob_pair.public();
-
-// 		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
-// 		let dave_public_key = dave_pair.public();
-
-// 		let eve_pair: sr25519::Pair = sr25519::Pair::from_seed(&EVE_SEED);
-// 		let eve_public_key = eve_pair.public();
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB, DAVE, EVE];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let bob_sign = bob_pair.sign(hash.as_ref());
-// 		let dave_sign = dave_pair.sign(hash.as_ref());
-// 		let eve_sign = eve_pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![bob_sign.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		// creating BOB's did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), bob_public_key, BOB, Vec::new()));
-
-// 		// creating DAVE's did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), dave_public_key, DAVE, Vec::new()));
-
-// 		// creating EVE's did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), eve_public_key, EVE, Vec::new()));
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = Lookup::get(&BOB)[0];
-
-// 		// vc_status = Inactive as only one issuer signed
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Inactive)));
-
-// 		// updating DAVE's signature
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![bob_sign.clone(), dave_sign.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner: BOB,
-// 			issuers: vec![BOB, DAVE, EVE],
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(VC::add_signature(Origin::signed(ALICE_ACCOUNT_ID), vc_id, dave_sign.clone()));
-
-// 		// vc_status = Inactive as only two issuer signed
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Inactive)));
-
-// 		// updating EVE's signature
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![bob_sign, dave_sign, eve_sign.clone()],
-// 			vc_type,
-// 			owner: BOB,
-// 			issuers: vec![BOB, DAVE, EVE],
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(VC::add_signature(Origin::signed(ALICE_ACCOUNT_ID), vc_id, eve_sign));
-
-// 		// vc_status = Active as only all issuer signed
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Active)));
-// 	})
-// }
-
-// #[test]
-// fn test_add_signature_with_one_of_the_signers() {
-// 	new_test_ext().execute_with(|| {
-// 		let bob_pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let bob_public_key = bob_pair.public();
-
-// 		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
-// 		let dave_public_key = dave_pair.public();
-
-// 		let eve_pair: sr25519::Pair = sr25519::Pair::from_seed(&EVE_SEED);
-// 		let eve_public_key = eve_pair.public();
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB, DAVE, EVE];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let bob_sign = bob_pair.sign(hash.as_ref());
-// 		// signed by Dave's public key
-// 		let dave_sign = dave_pair.sign(hash.as_ref());
-// 		// signed by Eve's public key
-// 		let eve_sign = eve_pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![bob_sign.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		// creating BOB's did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), bob_public_key, BOB, Vec::new()));
-
-// 		// creating DAVE's did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), dave_public_key, DAVE, Vec::new()));
-
-// 		// creating EVE's did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), eve_public_key, EVE, Vec::new()));
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = Lookup::get(&BOB)[0];
-
-// 		// vc_status = Inactive as only one issuer signed
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Inactive)));
-
-// 		// updating DAVE's signature
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![bob_sign.clone(), dave_sign.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner: BOB,
-// 			issuers: vec![BOB, DAVE, EVE],
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(VC::add_signature(Origin::signed(ALICE_ACCOUNT_ID), vc_id, dave_sign.clone()));
-
-// 		// vc_status = Inactive as only two issuer signed
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Inactive)));
-
-// 		// updating EVE's signature
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![bob_sign, dave_sign, eve_sign.clone()],
-// 			vc_type,
-// 			owner: BOB,
-// 			issuers: vec![BOB, DAVE, EVE],
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(VC::add_signature(Origin::signed(ALICE_ACCOUNT_ID), vc_id, eve_sign));
-
-// 		// vc_status = Active as only all issuer signed
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Active)));
-// 	})
-// }
-
-// #[test]
-// fn test_set_is_used_flag() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		// Adding did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: false,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = Lookup::get(&BOB)[0];
-
-// 		// set vc is_used flag as true
-// 		VC::set_is_used_flag(vc_id);
-// 		let vc_details = VCs::<Test>::get(vc_id).unwrap();
-// 		assert!(vc_details.0.is_vc_used);
-// 	})
-// }
-
-// #[test]
-// fn test_duplicate_issuers_signatures() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		// case when duplicate signatures are present
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature.clone(), signature.clone()],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::DuplicateSignature
-// 		);
-
-// 		// case when duplicate issuers are present
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB, BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::DuplicateSignature
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_add_duplicate_issuer_signatures() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		// case when duplicate signatures are present
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-// 		let duplicate_signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature.clone(), duplicate_signature.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner,
-// 			issuers: issuers.clone(),
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::DuplicateSignature
-// 		);
-
-// 		let dave_sign = dave_pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature.clone(), dave_sign],
-// 			vc_type: vc_type.clone(),
-// 			owner,
-// 			issuers: issuers.clone(),
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::InvalidSignature
-// 		);
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature.clone()],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = Lookup::get(&BOB)[0];
-
-// 		assert_noop!(
-// 			VC::add_signature(Origin::signed(ALICE_ACCOUNT_ID), vc_id, duplicate_signature),
-// 			Error::<Test>::DuplicateSignature,
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_generic_vc_store() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		let generic_vc = GenericVC { cid: convert_to_array::<64>("F0TAeD_UY2mK-agbzZTW".into()) };
-
-// 		let generic_vc: [u8; 128] = convert_to_array::<128>(generic_vc.encode());
-
-// 		let vc_type = VCType::GenericVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		// Hash for generic vc will be generated using
-// 		// the data stored in vc_url of generic_vc
-// 		let hash = BlakeTwo256::hash_of(&generic_vc);
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature],
-// 			vc_type,
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: generic_vc,
-// 		};
-
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(ALICE_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::NotACouncilMember,
-// 		);
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
-// 		let did = RLookup::get(vc_id);
-// 		assert_eq!(did, BOB);
-// 		assert_eq!(Lookup::get(did), vec![vc_id]);
-// 		assert_eq!(VCs::<Test>::get(vc_id), Some((vc.clone(), VCStatus::Active)));
-// 		assert_eq!(VCHistory::<Test>::get(vc_id), Some((VCStatus::Active, 0)));
-// 	})
-// }
-
-// #[test]
-// fn test_vc_already_exists() {
-// 	new_test_ext().execute_with(|| {
-// 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let public_key = pair.public();
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![BOB];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let signature = pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![signature.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner,
-// 			issuers: issuers.clone(),
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), public_key, BOB, Vec::new()));
-
-// 		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
-
-// 		assert_noop!(
-// 			VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()),
-// 			Error::<Test>::VCAlreadyExists
-// 		);
-// 	})
-// }
-
-// #[test]
-// fn test_invalid_signature_for_add_signature() {
-// 	new_test_ext().execute_with(|| {
-// 		let bob_pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
-// 		let bob_public_key = bob_pair.public();
-
-// 		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
-// 		let dave_public_key = dave_pair.public();
-
-// 		let token_vc = TokenVC {
-// 			token_name: convert_to_array::<16>("test".into()),
-// 			reservable_balance: 1000,
-// 			decimal: 6,
-// 			currency_code: convert_to_array::<8>("OTH".into()),
-// 		};
-
-// 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
-// 		let vc_type = VCType::TokenVC;
-// 		let owner = BOB;
-// 		let issuers = vec![DAVE];
-// 		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
-// 		let bob_sign = bob_pair.sign(hash.as_ref());
-// 		let dave_sign = dave_pair.sign(hash.as_ref());
-
-// 		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
-// 			hash,
-// 			signatures: vec![bob_sign.clone()],
-// 			vc_type: vc_type.clone(),
-// 			owner,
-// 			issuers,
-// 			is_vc_used: true,
-// 			vc_property: token_vc,
-// 		};
-
-// 		// creating BOB's did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), bob_public_key, BOB, Vec::new()));
-
-// 		// creating DAVE's did
-// 		assert_ok!(Did::add(Origin::signed(ALICE_ACCOUNT_ID), dave_public_key, DAVE, Vec::new()));
-// 		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
-
-// 		assert_ok!(VC::validate_sign(&vc, dave_sign.clone(), vc_id));
-// 		//Error will occur If signed by someone who is not issuer, Signature will be invalid!
-// 		assert_noop!(
-// 			VC::validate_sign(&vc, bob_sign.clone(), vc_id),
-// 			Error::<Test>::InvalidSignature
-// 		);
-// 	})
-// }
+#[test]
+#[should_panic]
+fn test_invalid_owner_vc() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
+		let did = RLookup::<Test>::get(vc_id);
+		assert_eq!(did, BOB);
+		assert_eq!(Lookup::<Test>::get(did), vec![vc_id]);
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+		assert_eq!(VCHistory::<Test>::get(vc_id), Some((vc.is_vc_active, 0)));
+
+		// Test MintVC
+		let vc_type = VCType::MintTokens;
+		let owner = ALICE;
+		let issuers = vec![BOB];
+		let mint_vc = SlashMintTokens { vc_id, amount: 1000 };
+		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &mint_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: mint_vc,
+		};
+		// Since the owner Did (Dave) is not registered, this should fail
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+	})
+}
+
+#[test]
+fn test_mint_vc_store() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
+		let did = RLookup::<Test>::get(vc_id);
+		assert_eq!(did, BOB);
+		assert_eq!(Lookup::<Test>::get(did), vec![vc_id]);
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+		assert_eq!(VCHistory::<Test>::get(vc_id), Some((vc.is_vc_active, 0)));
+
+		let vc_type = VCType::MintTokens;
+		let owner = DAVE;
+		let issuers = vec![BOB];
+		let mint_vc = SlashMintTokens { vc_id, amount: 1000 };
+		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &mint_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: false,
+			is_vc_active: true,
+			vc_type,
+			vc_property: mint_vc,
+		};
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
+		let did = RLookup::<Test>::get(vc_id);
+		assert_eq!(did, DAVE);
+		assert_eq!(Lookup::<Test>::get(did), vec![vc_id]);
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+		assert_eq!(VCHistory::<Test>::get(vc_id), Some((vc.is_vc_active, 0)))
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_cccode_validation() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTHs".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers: issuers.clone(),
+			signatures: vec![signature.clone()],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type: vc_type.clone(),
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>(" OT H".into()),
+		};
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			signatures: vec![signature.clone()],
+			vc_type: vc_type.clone(),
+			owner,
+			issuers: issuers.clone(),
+			is_vc_used: true,
+			vc_property: token_vc,
+			is_vc_active: true,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("1OTH".into()),
+		};
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+	})
+}
+
+#[test]
+fn test_update_status() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = Lookup::<Test>::get(&BOB)[0];
+		// Updating status flag
+		assert_ok!(VC::update_status(Origin::signed(BOB_ACCOUNT_ID), vc_id, vc.is_vc_active));
+
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc));
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_store_vc_with_different_account() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(NON_VALIDATOR_ACCOUNT), vc.encode()));
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_store_vc_with_wrong_hash() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		// Wrong Hash
+		let hash = H256::zero();
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner: BOB,
+			issuers: vec![BOB],
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_store_vc_with_wrong_signature() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let wrong_hash = H256::zero();
+		let signature = pair.sign(wrong_hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_store_vc_less_approvers() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB, DAVE];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let wrong_hash = H256::zero();
+		let signature = pair.sign(wrong_hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_update_status_sender() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = Lookup::<Test>::get(&BOB)[0];
+		let non_issuer = VALIDATOR_ACCOUNT;
+
+		// Updating status flag with non issuer account
+		assert_ok!(VC::update_status(Origin::signed(non_issuer), vc_id, vc.is_vc_active));
+
+		// Updating status flag with non validator account
+		assert_ok!(VC::update_status(Origin::signed(VALIDATOR_ACCOUNT), vc_id, vc.is_vc_active));
+	})
+}
+
+#[test]
+fn test_add_signature() {
+	new_test_ext().execute_with(|| {
+		let bob_pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
+		let eve_pair: sr25519::Pair = sr25519::Pair::from_seed(&EVE_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB, DAVE, EVE];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let bob_sign = bob_pair.sign(hash.as_ref());
+		let dave_sign = dave_pair.sign(hash.as_ref());
+		let eve_sign = eve_pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![bob_sign.clone()],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type: vc_type.clone(),
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = Lookup::<Test>::get(&BOB)[0];
+
+		// vc_status = Inactive as only one issuer signed
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+
+		// updating DAVE's signature
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			signatures: vec![bob_sign.clone(), dave_sign.clone()],
+			vc_type: vc_type.clone(),
+			owner: BOB,
+			issuers: vec![BOB, DAVE, EVE],
+			is_vc_used: true,
+			vc_property: token_vc,
+			is_vc_active: false,
+		};
+
+		assert_ok!(VC::add_signature(Origin::signed(BOB_ACCOUNT_ID), vc_id, dave_sign.clone()));
+
+		// vc_status = Inactive as only two issuer signed
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+
+		// updating EVE's signature
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner: BOB,
+			issuers: vec![BOB, DAVE, EVE],
+			signatures: vec![bob_sign, dave_sign, eve_sign.clone()],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::add_signature(Origin::signed(BOB_ACCOUNT_ID), vc_id, eve_sign));
+
+		// vc_status = Active as only all issuer signed
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+	})
+}
+
+#[test]
+fn test_add_signature_with_one_of_the_signers() {
+	new_test_ext().execute_with(|| {
+		let bob_pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
+		let eve_pair: sr25519::Pair = sr25519::Pair::from_seed(&EVE_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB, DAVE, EVE];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let bob_sign = bob_pair.sign(hash.as_ref());
+		// signed by Dave's public key
+		let dave_sign = dave_pair.sign(hash.as_ref());
+		// signed by Eve's public key
+		let eve_sign = eve_pair.sign(hash.as_ref());
+
+		let vc: verified_credentials::VC<H256> = verified_credentials::VC {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![bob_sign.clone()],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type: vc_type.clone(),
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = Lookup::<Test>::get(&BOB)[0];
+
+		// vc_status = Inactive as only one issuer signed
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+
+		// updating DAVE's signature
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			signatures: vec![bob_sign.clone(), dave_sign.clone()],
+			vc_type: vc_type.clone(),
+			owner: BOB,
+			issuers: vec![BOB, DAVE, EVE],
+			is_vc_used: true,
+			vc_property: token_vc,
+			is_vc_active: false,
+		};
+
+		assert_ok!(VC::add_signature(Origin::signed(DAVE_ACCOUNT_ID), vc_id, dave_sign.clone()));
+
+		// vc_status = Inactive as only two issuer signed
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+
+		// updating EVE's signature
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner: BOB,
+			issuers: vec![BOB, DAVE, EVE],
+			signatures: vec![bob_sign, dave_sign, eve_sign.clone()],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::add_signature(Origin::signed(DAVE_ACCOUNT_ID), vc_id, eve_sign));
+
+		// vc_status = Active as only all issuer signed
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+	})
+}
+
+#[test]
+fn test_set_is_used_flag() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: false,
+			is_vc_active: false,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = Lookup::<Test>::get(&BOB)[0];
+
+		// set vc is_used flag as true
+		VC::set_is_used_flag(vc_id, Some(true));
+		let vc_details = VCs::<Test>::get(vc_id).unwrap();
+		assert!(vc_details.is_vc_used);
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_duplicate_issuers_signatures() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		// case when duplicate signatures are present
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature.clone(), signature.clone()],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		// case when duplicate issuers are present
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB, BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_add_duplicate_issuer_signatures() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		// case when duplicate signatures are present
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+		let duplicate_signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers: issuers.clone(),
+			signatures: vec![signature.clone(), duplicate_signature.clone()],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type: vc_type.clone(),
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let dave_sign = dave_pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers: issuers.clone(),
+			signatures: vec![signature.clone(), dave_sign],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type: vc_type.clone(),
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type,
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = Lookup::<Test>::get(&BOB)[0];
+
+		assert_ok!(VC::add_signature(Origin::signed(DAVE_ACCOUNT_ID), vc_id, duplicate_signature));
+	})
+}
+
+#[test]
+fn test_generic_vc_store() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let generic_vc = GenericVC { cid: convert_to_array::<64>("F0TAeD_UY2mK-agbzZTW".into()) };
+
+		let generic_vc: [u8; 128] = convert_to_array::<128>(generic_vc.encode());
+
+		let vc_type = VCType::GenericVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		// Hash for generic vc will be generated using
+		// the data stored in vc_url of generic_vc
+		let hash = BlakeTwo256::hash_of(&generic_vc);
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![signature],
+			is_vc_used: true,
+			is_vc_active: true,
+			vc_type,
+			vc_property: generic_vc,
+		};
+
+		assert_noop!(
+			VC::store(Origin::signed(VALIDATOR_ACCOUNT), vc.encode()),
+			Error::<Test>::NotACouncilMember,
+		);
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
+		let did = RLookup::<Test>::get(vc_id);
+		assert_eq!(did, BOB);
+		assert_eq!(Lookup::<Test>::get(did), vec![vc_id]);
+		assert_eq!(VCs::<Test>::get(vc_id), Some(vc.clone()));
+		assert_eq!(VCHistory::<Test>::get(vc_id), Some((vc.is_vc_active, 0)));
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_vc_already_exists() {
+	new_test_ext().execute_with(|| {
+		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![BOB];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let signature = pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers: issuers.clone(),
+			signatures: vec![signature.clone()],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type: vc_type.clone(),
+			vc_property: token_vc,
+		};
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+
+		assert_ok!(VC::store(Origin::signed(BOB_ACCOUNT_ID), vc.encode()));
+	})
+}
+
+#[test]
+#[should_panic]
+fn test_invalid_signature_for_add_signature() {
+	new_test_ext().execute_with(|| {
+		let bob_pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+		let dave_pair: sr25519::Pair = sr25519::Pair::from_seed(&DAVE_SEED);
+
+		let token_vc = TokenVC {
+			token_name: convert_to_array::<16>("test".into()),
+			reservable_balance: 1000,
+			decimal: 6,
+			currency_code: convert_to_array::<8>("OTH".into()),
+		};
+
+		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
+		let vc_type = VCType::TokenVC;
+		let owner = BOB;
+		let issuers = vec![DAVE];
+		let hash = BlakeTwo256::hash_of(&(&vc_type, &token_vc, &owner, &issuers));
+		let bob_sign = bob_pair.sign(hash.as_ref());
+		let dave_sign = dave_pair.sign(hash.as_ref());
+
+		let vc: VCStruct<H256> = VCStruct {
+			hash,
+			owner,
+			issuers,
+			signatures: vec![bob_sign.clone()],
+			is_vc_used: true,
+			is_vc_active: false,
+			vc_type: vc_type.clone(),
+			vc_property: token_vc,
+		};
+
+		let vc_id = *BlakeTwo256::hash_of(&vc).as_fixed_bytes();
+
+		assert_ok!(VC::validate_sign(&vc, dave_sign.clone(), vc_id));
+		//Error will occur If signed by someone who is not issuer, Signature will be invalid!
+		assert_ok!(VC::validate_sign(&vc, bob_sign.clone(), vc_id));
+	})
+}
