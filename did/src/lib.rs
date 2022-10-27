@@ -2,10 +2,10 @@
 
 pub use pallet::*;
 
-// #[cfg(test)]
-// mod mock;
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
 
 #[cfg(feature = "std")]
 pub use serde;
