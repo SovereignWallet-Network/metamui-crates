@@ -25,12 +25,6 @@ pub const VALIDATOR_SEED: [u8; 32] = [
 ];
 pub const NON_VALIDATOR_ACCOUNT: u64 = 2;
 
-// pub const PRIVATE_DID: [u8; 32] = *b"did:ssid:Johny\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-// pub const PRIVATE_PUBKEY: sr25519::Public = sr25519::Public([1; 32]);
-
-// pub const PUBLIC_DID: [u8; 32] = *b"did:ssid:Toony\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-// pub const PUBLIC_PUBKEY: sr25519::Public = sr25519::Public([2; 32]);
-
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
