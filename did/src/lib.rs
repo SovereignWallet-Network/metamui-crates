@@ -333,7 +333,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		/// Function to validate vc when creating dids
-		fn verify_did_vc(vcs_details: VC<T::Hash>, did_vc_type: VCType) -> bool {
+		pub fn verify_did_vc(vcs_details: VC<T::Hash>, did_vc_type: VCType) -> bool {
 			vcs_details.vc_type == did_vc_type && vcs_details.is_vc_active && !vcs_details.is_vc_used
 		}
 

@@ -1,4 +1,5 @@
 use crate as pallet_did;
+use metamui_primitives::traits::IsValidator;
 use pallet_vc;
 use metamui_primitives::types::{ VCType, CompanyName, RegistrationNumber, VC };
 use metamui_primitives::VCid;
@@ -16,14 +17,12 @@ use sp_runtime::{
 };
 use system::EnsureSigned;
 
-pub const VALIDATOR_ACCOUNT: u64 = 0;
-pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:Alice\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-const VALIDATOR_SEED: [u8; 32] = [
-    229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
-    187, 122, 144, 149, 79, 123, 118, 54, 31, 110, 219, 92, 10,
+pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+pub const VALIDATOR_ACCOUNT: u64 = 2077282123132384724;
+pub const VALIDATOR_SEED: [u8; 32] = [
+  229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
+  187, 122, 144, 149, 79, 123, 118, 54, 31, 110, 219, 92, 10,
 ];
-pub const VALIDATOR_PUBKEY: sr25519::Public = sr25519::Public([0; 32]);
-
 pub const NON_VALIDATOR_ACCOUNT: u64 = 2;
 
 // pub const PRIVATE_DID: [u8; 32] = *b"did:ssid:Johny\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
@@ -47,6 +46,28 @@ frame_support::construct_runtime!(
 		VcPallet: pallet_vc::{Pallet, Call, Storage, Event<T>, Config<T>},
 	}
 );
+
+pub struct IsValidatorImplemented;
+impl IsValidator for IsValidatorImplemented {
+
+	fn is_validator(_who: &[u8; 32]) -> bool {
+		false
+	}
+
+  /// Check if given did has global permission level
+  fn is_validator_global(_did: &[u8; 32]) -> bool {
+    false
+  }
+
+	fn get_region(_did: [u8; 32]) -> Region {
+		vec![]
+  }
+
+	/// Check if given did has permission in given region
+  fn has_regional_permission(_did: &[u8; 32], _region: Region) -> bool {
+		true
+	}
+}
 
 impl system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -87,7 +108,7 @@ impl pallet_vc::Config for Test {
 	type Event = Event;
 	type ApproveOrigin = EnsureSigned<Self::AccountId>;
 	type IsCouncilMember = ();
-	type IsValidator = ();
+	type IsValidator = IsValidatorImplemented;
 	type DidResolution = Did;
 }
 
@@ -101,7 +122,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		initial_dids: vec![DIdentity::Private(
 			PrivateDid {
 				identifier: VALIDATOR_DID,
-				public_key: VALIDATOR_PUBKEY,
+				public_key: sr25519::Pair::from_seed(&VALIDATOR_SEED).public(),
 				metadata: Default::default(),
 			}
 		)],
@@ -148,7 +169,7 @@ pub fn get_vc_id_and_hex(did_vc_bytes: [u8; 128], vc_type: VCType) -> ([u8; 32],
 		issuers,
 		signatures: vec![signature],
 		is_vc_used: false,
-		is_vc_active: false,
+		is_vc_active: true,
 		vc_type,
 		vc_property: did_vc_bytes,
 	};
