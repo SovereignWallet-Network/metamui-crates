@@ -8,8 +8,8 @@ use frame_support::{
 	traits::{ GenesisBuild, ConstU16, ConstU32, ConstU64, OnInitialize, OnFinalize },
 };
 
-use codec::{ Encode, Decode };
-use sp_core::{sr25519, Pair, H256, Public};
+use codec::Encode;
+use sp_core::{ sr25519, Pair, H256 };
 use frame_system as system;
 use sp_runtime::{
 	testing::Header,
