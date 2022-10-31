@@ -1,7 +1,7 @@
 use crate as pallet_did;
 use metamui_primitives::traits::IsValidator;
 use pallet_vc;
-use metamui_primitives::types::{ VCType, CompanyName, RegistrationNumber, VC };
+use metamui_primitives::types::{ VCType, CompanyName, RegistrationNumber, VC, Region };
 use metamui_primitives::VCid;
 use crate::types::*;
 use frame_support::{
@@ -16,12 +16,19 @@ use sp_runtime::{
 	traits::{ BlakeTwo256, IdentityLookup, Hash },
 };
 use system::EnsureSigned;
-
+use sp_std::iter::*;
 pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 pub const VALIDATOR_ACCOUNT: u64 = 2077282123132384724;
 pub const VALIDATOR_SEED: [u8; 32] = [
-  229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
+	229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
   187, 122, 144, 149, 79, 123, 118, 54, 31, 110, 219, 92, 10,
+	];
+
+pub const REGIONAL_DID: [u8; 32] = *b"did:region:xyz\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+pub const REGIONAL_ACCOUNT: u64 = 13620103657161844528;
+pub const REGIONAL_SEED: [u8; 32] = [
+	134, 128, 32, 174, 6, 135, 221, 167, 213, 117, 101, 9, 58, 105, 9, 2, 17, 68, 152, 69, 167,
+	225, 20, 83, 97, 40, 0, 182, 99, 48, 114, 70,
 ];
 pub const NON_VALIDATOR_ACCOUNT: u64 = 2;
 
@@ -53,13 +60,22 @@ impl IsValidator for IsValidatorImplemented {
     false
   }
 
-	fn get_region(_did: [u8; 32]) -> Region {
-		vec![]
+	fn get_region(did: [u8; 32]) -> Region {
+		let colon = 58;
+		let index = did.iter()
+			.position(|&x| x == colon)
+			.unwrap_or_default();
+		let did = did.split_at(index+1).1;
+		let index = did.iter()
+			.position(|&x| x == colon)
+			.unwrap_or_default();
+		let region = did.split_at(index).0;
+		region.to_vec()
   }
 
 	/// Check if given did has permission in given region
-  fn has_regional_permission(_did: &[u8; 32], _region: Region) -> bool {
-		true
+  fn has_regional_permission(did: &[u8; 32], region: Region) -> bool {
+	  *did == VALIDATOR_DID || (*did == REGIONAL_DID && Self::get_region(*did) == region)
 	}
 }
 
@@ -113,13 +129,22 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 	
 	super::GenesisConfig::<Test> { 
-		initial_dids: vec![DIdentity::Private(
-			PrivateDid {
-				identifier: VALIDATOR_DID,
-				public_key: sr25519::Pair::from_seed(&VALIDATOR_SEED).public(),
-				metadata: Default::default(),
-			}
-		)],
+		initial_dids: vec![
+			DIdentity::Private(
+				PrivateDid {
+					identifier: VALIDATOR_DID,
+					public_key: sr25519::Pair::from_seed(&VALIDATOR_SEED).public(),
+					metadata: Default::default(),
+				}
+			),
+			DIdentity::Private(
+				PrivateDid {
+					identifier: REGIONAL_DID,
+					public_key: sr25519::Pair::from_seed(&REGIONAL_SEED).public(),
+					metadata: Default::default(),
+				}
+			)
+		],
 		phantom: Default::default(),
 	}
 		.assimilate_storage(&mut o)

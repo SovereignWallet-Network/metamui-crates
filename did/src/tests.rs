@@ -30,12 +30,142 @@ fn test_genesis_worked() {
 		    assert_eq!(private_did.public_key, validator_pubkey);
 			},
 		}
+
+		let regional_pubkey: sr25519::Public = sr25519::Pair::from_seed(&REGIONAL_SEED).public();
+		assert_eq!(DIDs::<Test>::contains_key(REGIONAL_DID.clone()), true);
+		assert_eq!(Lookup::<Test>::contains_key(REGIONAL_DID.clone()), true);
+		assert_eq!(
+			RLookup::<Test>::contains_key(Did::get_accountid_from_pubkey(&regional_pubkey)),
+			true
+		);
+
+		let (did_doc, block_number) = Did::get_did_details(REGIONAL_DID.clone()).unwrap();
+		match did_doc {
+			DIdentity::Public(public_did) => {
+				assert_eq!(public_did.identifier, REGIONAL_DID);
+		    assert_eq!(public_did.public_key, regional_pubkey);
+			},
+			DIdentity::Private(private_did) => {
+				assert_eq!(private_did.identifier, REGIONAL_DID);
+		    assert_eq!(private_did.public_key, regional_pubkey);
+			},
+		}
 		assert_eq!(block_number, 0);
 	})
 }
 //END GENESIS TESTING
 
 // START ADD_DID TESTING
+
+// START LOCAL_VALIDATOR_ADDS_PRIVATE_DID_IN_THEIR_REGION TESTING
+#[test]
+fn test_local_validator_adds_private_did_in_their_region() {
+	new_test_ext().execute_with(|| {
+		let identifier = *b"did:region:Alice2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+		let public_key = sr25519::Public(identifier);
+
+		let did_vc_bytes = get_private_did_vc(identifier, public_key);
+		let (did_vc_id, did_vc_hex) = get_vc_id_and_hex(did_vc_bytes, VCType::PrivateDidVC);
+
+		assert_ok!(VcPallet::store(Origin::signed(REGIONAL_ACCOUNT), did_vc_hex));
+		assert_ok!(Did::create_private(
+			Origin::signed(REGIONAL_ACCOUNT),
+			did_vc_id,
+			None
+		));
+	})
+}
+// END LOCAL_VALIDATOR_ADDS_PRIVATE_DID_IN_THEIR_REGION TESTING
+
+// START LOCAL_VALIDATOR_ADDS_PUBLIC_DID_IN_THEIR_REGION TESTING
+#[test]
+fn test_local_validator_adds_public_did_in_their_region() {
+	new_test_ext().execute_with(|| {
+		let identifier = *b"did:region:Alice2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+		let public_key = sr25519::Public(identifier);
+
+		let did_vc_bytes = get_public_did_vc(identifier, public_key);
+		let (did_vc_id, did_vc_hex) = get_vc_id_and_hex(did_vc_bytes, VCType::PublicDidVC);
+
+		assert_ok!(VcPallet::store(Origin::signed(REGIONAL_ACCOUNT), did_vc_hex));
+		assert_ok!(Did::create_public(
+			Origin::signed(REGIONAL_ACCOUNT),
+			did_vc_id,
+			None
+		));
+	})
+}
+// END LOCAL_VALIDATOR_ADDS_PUBLIC_DID_IN_THEIR_REGION TESTING
+
+// START LOCAL_VALIDATOR_ADDS_PRIVATE_DID_IN_ANOTHER_REGION TESTING
+#[test]
+fn test_local_validator_adds_private_did_in_another_region() {
+	new_test_ext().execute_with(|| {
+		let identifier = *b"did:region2:Alice2\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+		let public_key = sr25519::Public(identifier);
+
+		let did_vc_bytes = get_private_did_vc(identifier, public_key);
+		let (_, did_vc_hex) = get_vc_id_and_hex(did_vc_bytes, VCType::PrivateDidVC);
+
+		assert_noop!(VcPallet::store(Origin::signed(REGIONAL_ACCOUNT), did_vc_hex), pallet_vc::Error::<Test>::NotAValidator);
+	})
+}
+// END LOCAL_VALIDATOR_ADDS_PRIVATE_DID_IN_ANOTHER_REGION TESTING
+
+// START LOCAL_VALIDATOR_ADDS_PUBLIC_DID_IN_ANOTHER_REGION TESTING
+#[test]
+fn test_local_validator_adds_public_did_in_another_region() {
+	new_test_ext().execute_with(|| {
+		let identifier = *b"did:region2:Alice2\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+		let public_key = sr25519::Public(identifier);
+
+		let did_vc_bytes = get_public_did_vc(identifier, public_key);
+		let (_, did_vc_hex) = get_vc_id_and_hex(did_vc_bytes, VCType::PublicDidVC);
+
+		assert_noop!(VcPallet::store(Origin::signed(REGIONAL_ACCOUNT), did_vc_hex), pallet_vc::Error::<Test>::NotAValidator);
+	})
+}
+// END LOCAL_VALIDATOR_ADDS_PUBLIC_DID_IN_ANOTHER_REGION TESTING
+
+// START GLOBAL_VALIDATOR_ADDS_PRIVATE_DID_IN_ANOTHER_REGION TESTING
+#[test]
+fn test_global_validator_adds_regional_private_did() {
+	new_test_ext().execute_with(|| {
+		let identifier = *b"did:region:Alice2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+		let public_key = sr25519::Public(identifier);
+
+		let did_vc_bytes = get_private_did_vc(identifier, public_key);
+		let (did_vc_id, did_vc_hex) = get_vc_id_and_hex(did_vc_bytes, VCType::PrivateDidVC);
+
+		assert_ok!(VcPallet::store(Origin::signed(VALIDATOR_ACCOUNT), did_vc_hex));
+		assert_ok!(Did::create_private(
+			Origin::signed(VALIDATOR_ACCOUNT),
+			did_vc_id,
+			None
+		));
+	})
+}
+// END GLOBAL_VALIDATOR_ADDS_PRIVATE_DID_IN_ANOTHER_REGION TESTING
+
+// START GLOBAL_VALIDATOR_ADDS_PUBLIC_DID_IN_ANOTHER_REGION TESTING
+#[test]
+fn test_global_validator_adds_regional_public_did() {
+	new_test_ext().execute_with(|| {
+		let identifier = *b"did:region:Alice2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+		let public_key = sr25519::Public(identifier);
+
+		let did_vc_bytes = get_public_did_vc(identifier, public_key);
+		let (did_vc_id, did_vc_hex) = get_vc_id_and_hex(did_vc_bytes, VCType::PublicDidVC);
+
+		assert_ok!(VcPallet::store(Origin::signed(VALIDATOR_ACCOUNT), did_vc_hex));
+		assert_ok!(Did::create_public(
+			Origin::signed(VALIDATOR_ACCOUNT),
+			did_vc_id,
+			None
+		));
+	})
+}
+// END GLOBAL_VALIDATOR_ADDS_PUBLIC_DID_IN_ANOTHER_REGION TESTING
 
 // START ADD_INVALID_PRIVATE_DID TESTING
 #[test]
