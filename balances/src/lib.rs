@@ -1179,9 +1179,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 
 	/// Check if the AccountId is mapped to some Did in our system
-	fn ensure_did_exists(fetched_id: &T::AccountId) -> DispatchResult {
+	fn ensure_did_exists(did: &T::AccountId) -> DispatchResult {
 		ensure!(
-			T::DidResolution::did_exists(MultiAddress::Id(fetched_id.clone())),
+			T::DidResolution::did_exists(MultiAddress::Id(did.clone())),
 			Error::<T, I>::RecipentDIDNotRegistered
 		);
 		Ok(())
@@ -1634,6 +1634,7 @@ where
 
 		// ensure that the recipent accountId has been mapped to a DID, else return
 		Self::ensure_did_exists(dest)?;
+		Self::ensure_did_exists(transactor)?;
 
 		Self::try_mutate_account_with_dust(
 			dest,

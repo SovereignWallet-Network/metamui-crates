@@ -58,8 +58,8 @@ use frame_support::{
 	weights::{GetDispatchInfo, Pays, Weight},
 };
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 mod impls;
 pub use crate::impls::*;

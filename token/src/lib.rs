@@ -71,6 +71,8 @@ pub mod pallet {
 		TokenMinted { balance: BalanceOf<T>, vc_id: VCid },
 		/// Token amount is tranfered
 		TransferredWithVC { to: Did, balance: BalanceOf<T>, vc_id: VCid },
+		/// Provider count increased
+		ProviderIncreased {did: Did, account: T::AccountId },
 	}
 
 	// Errors inform users that something went wrong.
@@ -213,6 +215,30 @@ pub mod pallet {
 			T::VCResolution::set_is_vc_used(&vc_id, true);
 
 			Self::deposit_event(Event::TokenMinted { balance: amount, vc_id });
+
+			Ok(().into())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn inc_provider(origin: OriginFor<T>, did: Did) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+
+			ensure!(
+				T::DidResolution::did_exists(MultiAddress::Did(did)),
+				Error::<T>::RecipentDIDNotRegistered,
+			);
+
+			let account = T::DidResolution::get_account_id(&did).unwrap();
+
+			if frame_system::Pallet::<T>::inc_consumers_without_limit(&account).is_err() {
+				// This will leak a provider reference, however it only happens once (at
+				// genesis) so it's really not a big deal and we assume that the user wants to
+				// do this since it's the only way a non-endowed account can contain a session
+				// key.
+				frame_system::Pallet::<T>::inc_providers(&account);
+			}
+
+			Self::deposit_event(Event::ProviderIncreased { did, account });
 
 			Ok(().into())
 		}
