@@ -169,7 +169,7 @@ fn test_global_validator_adds_regional_public_did() {
 
 // START ADD_INVALID_PRIVATE_DID TESTING
 #[test]
-fn test_add_invalid_priavte_did() {
+fn test_add_invalid_private_did() {
 	new_test_ext().execute_with(|| {
 		let identifier = *b"d\0d:ssid:Alice2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 		let public_key = sr25519::Public(identifier);
