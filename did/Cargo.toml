@@ -29,6 +29,9 @@ cumulus-primitives-core = { default-features = false, git = "https://github.com/
 # Metamui
 metamui-primitives = { default-features = false, path = '../metamui-primitives', version = '0.0.1' }
 
+[dev-dependencies]
+pallet-vc = { default-features = false, path = '../vc', version = '1.0.0' }
+
 [features]
 default = ["std"]
 std = [

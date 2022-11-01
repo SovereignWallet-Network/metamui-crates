@@ -1,22 +1,36 @@
 use crate as pallet_did;
-
+use metamui_primitives::traits::IsValidator;
+use pallet_vc;
+use metamui_primitives::types::{ VCType, CompanyName, RegistrationNumber, VC, Region };
+use metamui_primitives::VCid;
 use crate::types::*;
 use frame_support::{
 	traits::{ GenesisBuild, ConstU16, ConstU32, ConstU64, OnInitialize, OnFinalize },
 };
 
+use codec::Encode;
+use sp_core::{ sr25519, Pair, H256 };
 use frame_system as system;
-use sp_core::{ sr25519, H256 };
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{ BlakeTwo256, IdentityLookup, Hash },
 };
 use system::EnsureSigned;
+use sp_std::iter::*;
+pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+pub const VALIDATOR_ACCOUNT: u64 = 2077282123132384724;
+pub const VALIDATOR_SEED: [u8; 32] = [
+	229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
+  187, 122, 144, 149, 79, 123, 118, 54, 31, 110, 219, 92, 10,
+	];
 
-pub const VALIDATOR_ACCOUNT: u64 = 0;
+pub const REGIONAL_DID: [u8; 32] = *b"did:region:xyz\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+pub const REGIONAL_ACCOUNT: u64 = 13620103657161844528;
+pub const REGIONAL_SEED: [u8; 32] = [
+	134, 128, 32, 174, 6, 135, 221, 167, 213, 117, 101, 9, 58, 105, 9, 2, 17, 68, 152, 69, 167,
+	225, 20, 83, 97, 40, 0, 182, 99, 48, 114, 70,
+];
 pub const NON_VALIDATOR_ACCOUNT: u64 = 2;
-pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:Alice\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-pub const VALIDATOR_PUBKEY: sr25519::Public = sr25519::Public([0; 32]);
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -30,8 +44,40 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Did: pallet_did::{Pallet, Call, Storage, Event<T>, Config<T>},
+		VcPallet: pallet_vc::{Pallet, Call, Storage, Event<T>, Config<T>},
 	}
 );
+
+pub struct IsValidatorImplemented;
+impl IsValidator for IsValidatorImplemented {
+
+	fn is_validator(_who: &[u8; 32]) -> bool {
+		false
+	}
+
+  /// Check if given did has global permission level
+  fn is_validator_global(_did: &[u8; 32]) -> bool {
+    false
+  }
+
+	fn get_region(did: [u8; 32]) -> Region {
+		let colon = 58;
+		let index = did.iter()
+			.position(|&x| x == colon)
+			.unwrap_or_default();
+		let did = did.split_at(index+1).1;
+		let index = did.iter()
+			.position(|&x| x == colon)
+			.unwrap_or_default();
+		let region = did.split_at(index).0;
+		region.to_vec()
+  }
+
+	/// Check if given did has permission in given region
+  fn has_regional_permission(did: &[u8; 32], region: Region) -> bool {
+	  *did == VALIDATOR_DID || (*did == REGIONAL_DID && Self::get_region(*did) == region)
+	}
+}
 
 impl system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -64,7 +110,16 @@ impl pallet_did::Config for Test {
 	type Event = Event;
 	type ValidatorOrigin = EnsureSigned<Self::AccountId>;
 	type MaxKeyChanges = ConstU32<16>;
+	type VCResolution = VcPallet;
 	type OnDidUpdate = ();
+}
+
+impl pallet_vc::Config for Test {
+	type Event = Event;
+	type ApproveOrigin = EnsureSigned<Self::AccountId>;
+	type IsCouncilMember = ();
+	type IsValidator = IsValidatorImplemented;
+	type DidResolution = Did;
 }
 
 // Build genesis storage according to the mock runtime.
@@ -74,14 +129,22 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 	
 	super::GenesisConfig::<Test> { 
-		initial_dids: vec![DIdentity::Private(
-			PrivateDid {
-				identifier: VALIDATOR_DID,
-				public_key: VALIDATOR_PUBKEY,
-				metadata: Default::default(),
-			}
-		)],
-		
+		initial_dids: vec![
+			DIdentity::Private(
+				PrivateDid {
+					identifier: VALIDATOR_DID,
+					public_key: sr25519::Pair::from_seed(&VALIDATOR_SEED).public(),
+					metadata: Default::default(),
+				}
+			),
+			DIdentity::Private(
+				PrivateDid {
+					identifier: REGIONAL_DID,
+					public_key: sr25519::Pair::from_seed(&REGIONAL_SEED).public(),
+					metadata: Default::default(),
+				}
+			)
+		],
 		phantom: Default::default(),
 	}
 		.assimilate_storage(&mut o)
@@ -89,6 +152,61 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	o.into()
 }
 	
+pub fn get_public_did_vc(identifier: [u8; 32], public_key: PublicKey) -> [u8; 128]{
+	let public_key = public_key;
+	let did = identifier;
+	let registration_number: RegistrationNumber = Default::default();
+	let company_name: CompanyName = Default::default();
+	let did_vc= PublicDidVC{
+		public_key,
+		registration_number,
+		company_name,
+		did
+	};
+	convert_to_array::<128>(did_vc.encode())
+}
+
+pub fn get_private_did_vc(identifier: [u8; 32], public_key: PublicKey) -> [u8; 128]{
+	let public_key = public_key;
+	let did = identifier;
+	let did_vc = PrivateDidVC{
+		public_key,
+		did
+	};
+	convert_to_array::<128>(did_vc.encode())
+}
+
+pub fn get_vc_id_and_hex(did_vc_bytes: [u8; 128], vc_type: VCType) -> ([u8; 32], Vec<u8>) {
+	let pair: sr25519::Pair = sr25519::Pair::from_seed(&VALIDATOR_SEED);
+	let owner = VALIDATOR_DID;
+	let issuers = vec![VALIDATOR_DID];
+	let hash = BlakeTwo256::hash_of(&(&vc_type, &did_vc_bytes, &owner, &issuers));
+	let signature = pair.sign(hash.as_ref());
+	let vc_struct = VC {
+		hash,
+		owner,
+		issuers,
+		signatures: vec![signature],
+		is_vc_used: false,
+		is_vc_active: true,
+		vc_type,
+		vc_property: did_vc_bytes,
+	};
+	let vc_id: VCid = *BlakeTwo256::hash_of(&vc_struct).as_fixed_bytes();
+  (vc_id, vc_struct.encode())
+}
+
+pub fn convert_to_array<const N: usize>(mut v: Vec<u8>) -> [u8; N] {
+	if v.len() != N {
+		for _ in v.len()..N {
+			v.push(0);
+		}
+	}
+	v.try_into().unwrap_or_else(|v: Vec<u8>| {
+		panic!("Expected a Vec of length {} but it was {}", N, v.len())
+	})
+}
+
 pub fn run_to_block(n: u64) {
 	while System::block_number() < n {
 		if System::block_number() > 1 {
