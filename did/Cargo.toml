@@ -42,6 +42,7 @@ std = [
 	"scale-info/std",
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-vc/std",
 	"frame-benchmarking/std",
 	"cumulus-primitives-core/std",
 ]
