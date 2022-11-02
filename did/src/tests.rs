@@ -19,7 +19,7 @@ fn test_genesis_worked() {
 			true
 		);
 
-		let (did_doc, block_number) = Did::get_did_details(VALIDATOR_DID.clone()).unwrap();
+		let (did_doc, _block_number) = Did::get_did_details(VALIDATOR_DID.clone()).unwrap();
 		match did_doc {
 			DIdentity::Public(public_did) => {
 				assert_eq!(public_did.identifier, VALIDATOR_DID);
@@ -380,7 +380,7 @@ fn test_remove_non_existing_did() {
 fn test_non_validator_removes_did() {
 	new_test_ext().execute_with(|| {
 		let identifier = VALIDATOR_DID;
-		assert_noop!((Did::remove(Origin::signed(NON_VALIDATOR_ACCOUNT), identifier.clone(), None)), BadOrigin);
+		assert_noop!((Did::remove(Origin::signed(1), identifier.clone(), None)), BadOrigin);
 	})
 }
 //END NON_VALIDATOR_REMOVES_DID TESTING

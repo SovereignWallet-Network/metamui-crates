@@ -30,7 +30,6 @@ pub const REGIONAL_SEED: [u8; 32] = [
 	134, 128, 32, 174, 6, 135, 221, 167, 213, 117, 101, 9, 58, 105, 9, 2, 17, 68, 152, 69, 167,
 	225, 20, 83, 97, 40, 0, 182, 99, 48, 114, 70,
 ];
-pub const NON_VALIDATOR_ACCOUNT: u64 = 2;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
