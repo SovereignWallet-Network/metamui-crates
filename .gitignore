@@ -13,3 +13,6 @@
 .local
 .vscode/settings.json
 .vscode/launch.json
+
+._*
+

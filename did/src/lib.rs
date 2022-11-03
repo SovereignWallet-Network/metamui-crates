@@ -121,7 +121,7 @@ pub mod pallet {
 		DIDDoesNotExist,
 		/// The operation is restricted to the validator only
 		NotAValidator,
-    /// The given VCId does not exist on chain
+    	/// The given VCId does not exist on chain
 		VCIdDoesNotExist,
 		/// The entered VCId is not eligible to create Did
 		InvalidVC

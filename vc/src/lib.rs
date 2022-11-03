@@ -102,7 +102,7 @@ pub mod pallet {
 
   /// the map for storing VC information
 	#[pallet::storage]
-  pub(super) type VCs<T: Config> = StorageMap<_, Blake2_128Concat, VCid, Option<VC<T::Hash>>, ValueQuery>;
+  pub(super) type VCs<T: Config> = StorageMap<_, Blake2_128Concat, VCid, VC<T::Hash>, OptionQuery>;
 
   /// map to enable lookup from Did to VCids
 	#[pallet::storage]
@@ -114,7 +114,7 @@ pub mod pallet {
 
 	/// the map for storing history of VC
 	#[pallet::storage]
-  pub(super) type VCHistory<T: Config> = StorageMap<_, Blake2_128Concat, VCid, Option<(IsVCActive, T::BlockNumber)>, ValueQuery>;
+  pub(super) type VCHistory<T: Config> = StorageMap<_, Blake2_128Concat, VCid, (IsVCActive, T::BlockNumber), OptionQuery>;
 
 	/// map for vc id and approvers list
 	#[pallet::storage]
@@ -252,7 +252,7 @@ impl<T: Config> Pallet<T> {
       Lookup::<T>::insert(vc.owner, vcids);
       RLookup::<T>::insert(vc_id, vc.owner);
 
-      VCs::<T>::insert(vc_id, Some(vc));
+      VCs::<T>::insert(vc_id, vc);
     }
   }
   
@@ -434,7 +434,7 @@ impl<T: Config> Pallet<T> {
     // Setting is_vc_active
     vc.is_vc_active = vc_status;
 
-    VCs::<T>::insert(vc_id, Some(vc.clone()));
+    VCs::<T>::insert(vc_id, vc.clone());
     RLookup::<T>::insert(vc_id, identifier);
 
     if Lookup::<T>::contains_key(&identifier) {
@@ -445,7 +445,7 @@ impl<T: Config> Pallet<T> {
       Lookup::<T>::insert(identifier, vec![vc_id]);
     }
 
-    VCHistory::<T>::insert(vc_id, Some((vc_status, current_block_no)));
+    VCHistory::<T>::insert(vc_id, (vc_status, current_block_no));
 
     Ok(())
   }
@@ -457,13 +457,13 @@ impl<T: Config> Pallet<T> {
       // Setting is_vc_active
       vc.is_vc_active = status;
 
-      VCs::<T>::insert(vc_id, Some(vc));
+      VCs::<T>::insert(vc_id, vc);
     } else {
       fail!(Error::<T>::VCIdDoesNotExist);
     }
 
     if let Some(vc_history) = VCHistory::<T>::get(&vc_id) {
-      VCHistory::<T>::insert(vc_id, Some((status, vc_history.1)));
+      VCHistory::<T>::insert(vc_id, (status, vc_history.1));
     }
     Self::deposit_event(Event::VCStatusUpdated{ vcid: vc_id, vcstatus: status });
 
@@ -476,10 +476,10 @@ impl<T: Config> Pallet<T> {
     // Setting is_vc_active
     let status = Self::is_vc_active(&updated_vc)?;
     updated_vc.is_vc_active = status;
-    VCs::<T>::insert(vc_id, Some(updated_vc));
+    VCs::<T>::insert(vc_id, updated_vc);
 
     if let Some(vc_history) = VCHistory::<T>::get(&vc_id) {
-      VCHistory::<T>::insert(vc_id, Some((status, vc_history.1)));
+      VCHistory::<T>::insert(vc_id, (status, vc_history.1));
     }
 
     Self::deposit_event(Event::VCStatusUpdated{ vcid: vc_id, vcstatus: status });
@@ -491,7 +491,7 @@ impl<T: Config> Pallet<T> {
   pub fn set_is_used_flag(vc_id: VCid, is_vc_used: Option<bool>) {
     if let Some(mut vc) = VCs::<T>::get(&vc_id) {
       vc.is_vc_used = is_vc_used.unwrap_or(true);
-      VCs::<T>::insert(vc_id, Some(vc));
+      VCs::<T>::insert(vc_id, vc);
     }
   }
 
