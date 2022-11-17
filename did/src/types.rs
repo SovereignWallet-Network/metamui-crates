@@ -107,6 +107,7 @@ pub trait DidUpdated {
       para_id: ParaId,
       public_key: PublicKey,
       identifier: Did,
+      did_type: DidType,
   );
 
   fn on_did_removal(
@@ -126,6 +127,7 @@ impl DidUpdated for () {
       _: ParaId,
       _: PublicKey,
       _: Did,
+      _: DidType,
   ) {
     ()
   }

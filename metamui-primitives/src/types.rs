@@ -3,13 +3,14 @@ use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
 use frame_support::{traits::ConstU32, BoundedVec};
+use frame_support::pallet_prelude::MaxEncodedLen;
 use sp_core::sr25519::Signature as SRSignature;
 use sp_core::sr25519;
 
 /// VC Property type
 pub type VCProperty = [u8; 128];
 
-/// Public Key TypeI
+/// Public Key Type
 pub type PublicKey = sr25519::Public;
 /// Maximum Size of Metadata
 pub type MaxMetadata = ConstU32<32>;
@@ -110,4 +111,14 @@ pub struct PrivateDidVC {
 	pub public_key: PublicKey,
   /// Did
   pub did: Did,
+}
+
+/// Did Type 
+#[derive(Decode, Encode, TypeInfo, Clone, PartialEq, Debug, MaxEncodedLen)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum DidType {
+  /// Public Did
+  Public,
+  /// Private Did
+  Private,
 }

@@ -176,6 +176,7 @@ pub mod pallet {
 					para_id,
 					vc_property.public_key,
 					vc_property.did,
+					DidType::Private,
 				);
 			}
 
@@ -231,6 +232,7 @@ pub mod pallet {
 					para_id,
 					vc_property.public_key,
 					vc_property.did,
+					DidType::Public,
 				);
 			}
 
@@ -659,16 +661,24 @@ pub mod pallet {
 			
 			let (did_doc, _) = Self::get_did_details(identifier.clone())?;
 
-			let public_key = match did_doc {
-				DIdentity::Public(public_did) => public_did.public_key,
-				DIdentity::Private(private_did) => private_did.public_key,
+			match did_doc {
+				DIdentity::Public(public_did) => {
+					T::OnDidUpdate::on_new_did(
+						para_id,
+						public_did.public_key,
+						*identifier,
+						DidType::Public,
+					);
+				},
+				DIdentity::Private(private_did) => {
+					T::OnDidUpdate::on_new_did(
+						para_id,
+						private_did.public_key,
+						*identifier,
+						DidType::Private,
+					);
+				},
 			};
-
-			T::OnDidUpdate::on_new_did(
-				para_id,
-				public_key,
-				*identifier,
-			);
 
 			Ok(())
 		}
