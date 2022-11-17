@@ -114,7 +114,7 @@ pub struct PrivateDidVC {
 }
 
 /// Did Type 
-#[derive(Decode, Encode, TypeInfo, Clone, PartialEq, Debug, MaxEncodedLen)]
+#[derive(Decode, Encode, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DidType {
   /// Public Did
