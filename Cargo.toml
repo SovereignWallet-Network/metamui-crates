@@ -10,7 +10,8 @@ members = [
     "did",
     "check-access",
     "token",
-    "vc"
+    "vc",
+    "collator-selection"
 ]
 [profile.release]
 panic = "unwind"
