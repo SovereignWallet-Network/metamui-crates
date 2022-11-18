@@ -152,6 +152,9 @@ pub mod pallet {
 
 		/// The weight information of this pallet.
 		type WeightInfo: WeightInfo;
+
+		/// Sudo Origin
+		type RegisterOrigin: EnsureOrigin<Self::Origin>;
 	}
 
 	/// Basic information about a collation candidate.
@@ -348,15 +351,15 @@ pub mod pallet {
 		///
 		/// This call is not available to `Invulnerable` collators.
 		#[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]
-		pub fn register_as_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
+		pub fn register_as_candidate(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResultWithPostInfo {
+			T::RegisterOrigin::ensure_origin(origin)?;
 
 			// ensure we are below limit.
 			let length = <Candidates<T>>::decode_len().unwrap_or_default();
 			ensure!((length as u32) < Self::desired_candidates(), Error::<T>::TooManyCandidates);
-			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
+			ensure!(!Self::invulnerables().contains(&account_id), Error::<T>::AlreadyInvulnerable);
 
-			let validator_key = T::ValidatorIdOf::convert(who.clone())
+			let validator_key = T::ValidatorIdOf::convert(account_id.clone())
 				.ok_or(Error::<T>::NoAssociatedValidatorId)?;
 			ensure!(
 				T::ValidatorRegistration::is_registered(&validator_key),
@@ -365,24 +368,24 @@ pub mod pallet {
 
 			let deposit = Self::candidacy_bond();
 			// First authored block is current block plus kick threshold to handle session delay
-			let incoming = CandidateInfo { who: who.clone(), deposit };
+			let incoming = CandidateInfo { who: account_id.clone(), deposit };
 
 			let current_count =
 				<Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
-					if candidates.iter().any(|candidate| candidate.who == who) {
+					if candidates.iter().any(|candidate| candidate.who == account_id) {
 						Err(Error::<T>::AlreadyCandidate)?
 					} else {
-						T::Currency::reserve(&who, deposit)?;
+						T::Currency::reserve(&account_id, deposit)?;
 						candidates.try_push(incoming).map_err(|_| Error::<T>::TooManyCandidates)?;
 						<LastAuthoredBlock<T>>::insert(
-							who.clone(),
+							account_id.clone(),
 							frame_system::Pallet::<T>::block_number() + T::KickThreshold::get(),
 						);
 						Ok(candidates.len())
 					}
 				})?;
 
-			Self::deposit_event(Event::CandidateAdded { account_id: who, deposit });
+			Self::deposit_event(Event::CandidateAdded { account_id: account_id, deposit });
 			Ok(Some(T::WeightInfo::register_as_candidate(current_count as u32)).into())
 		}
 
