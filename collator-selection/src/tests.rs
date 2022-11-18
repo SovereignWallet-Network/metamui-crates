@@ -102,17 +102,17 @@ fn cannot_register_candidate_if_too_many() {
 
 		// can't accept anyone anymore.
 		assert_noop!(
-			CollatorSelection::register_as_candidate(Origin::signed(3)),
+			CollatorSelection::register_as_candidate(Origin::signed(3), 3),
 			Error::<Test>::TooManyCandidates,
 		);
 
 		// reset desired candidates:
 		<crate::DesiredCandidates<Test>>::put(1);
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4), 4));
 
 		// but no more
 		assert_noop!(
-			CollatorSelection::register_as_candidate(Origin::signed(5)),
+			CollatorSelection::register_as_candidate(Origin::signed(5), 5),
 			Error::<Test>::TooManyCandidates,
 		);
 	})
@@ -123,7 +123,7 @@ fn cannot_unregister_candidate_if_too_few() {
 	new_test_ext().execute_with(|| {
 		// reset desired candidates:
 		<crate::DesiredCandidates<Test>>::put(1);
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4), 4));
 
 		// can not remove too few
 		assert_noop!(
@@ -140,7 +140,7 @@ fn cannot_register_as_candidate_if_invulnerable() {
 
 		// can't 1 because it is invulnerable.
 		assert_noop!(
-			CollatorSelection::register_as_candidate(Origin::signed(1)),
+			CollatorSelection::register_as_candidate(Origin::signed(1), 1),
 			Error::<Test>::AlreadyInvulnerable,
 		);
 	})
@@ -151,7 +151,7 @@ fn cannot_register_as_candidate_if_keys_not_registered() {
 	new_test_ext().execute_with(|| {
 		// can't 7 because keys not registered.
 		assert_noop!(
-			CollatorSelection::register_as_candidate(Origin::signed(7)),
+			CollatorSelection::register_as_candidate(Origin::signed(7), 7),
 			Error::<Test>::ValidatorNotRegistered
 		);
 	})
@@ -161,7 +161,7 @@ fn cannot_register_as_candidate_if_keys_not_registered() {
 fn cannot_register_dupe_candidate() {
 	new_test_ext().execute_with(|| {
 		// can add 3 as candidate
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3), 3));
 		let addition = CandidateInfo { who: 3, deposit: 10 };
 		assert_eq!(CollatorSelection::candidates(), vec![addition]);
 		assert_eq!(CollatorSelection::last_authored_block(3), 10);
@@ -169,7 +169,7 @@ fn cannot_register_dupe_candidate() {
 
 		// but no more
 		assert_noop!(
-			CollatorSelection::register_as_candidate(Origin::signed(3)),
+			CollatorSelection::register_as_candidate(Origin::signed(3), 3),
 			Error::<Test>::AlreadyCandidate,
 		);
 	})
@@ -182,11 +182,11 @@ fn cannot_register_as_candidate_if_poor() {
 		assert_eq!(Balances::free_balance(&33), 0);
 
 		// works
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3), 3));
 
 		// poor
 		assert_noop!(
-			CollatorSelection::register_as_candidate(Origin::signed(33)),
+			CollatorSelection::register_as_candidate(Origin::signed(33), 33),
 			BalancesError::<Test>::InsufficientBalance,
 		);
 	});
@@ -205,8 +205,8 @@ fn register_as_candidate_works() {
 		assert_eq!(Balances::free_balance(&3), 100);
 		assert_eq!(Balances::free_balance(&4), 100);
 
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3), 3));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4), 4));
 
 		assert_eq!(Balances::free_balance(&3), 90);
 		assert_eq!(Balances::free_balance(&4), 90);
@@ -219,11 +219,11 @@ fn register_as_candidate_works() {
 fn leave_intent() {
 	new_test_ext().execute_with(|| {
 		// register a candidate.
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3), 3));
 		assert_eq!(Balances::free_balance(3), 90);
 
 		// register too so can leave above min candidates
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5), 5));
 		assert_eq!(Balances::free_balance(5), 90);
 
 		// cannot leave if not candidate.
@@ -247,7 +247,7 @@ fn authorship_event_handler() {
 
 		// 4 is the default author.
 		assert_eq!(Balances::free_balance(4), 100);
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4), 4));
 		// triggers `note_author`
 		Authorship::on_initialize(1);
 
@@ -272,7 +272,7 @@ fn fees_edgecases() {
 		Balances::make_free_balance_be(&CollatorSelection::account_id(), 5);
 		// 4 is the default author.
 		assert_eq!(Balances::free_balance(4), 100);
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4), 4));
 		// triggers `note_author`
 		Authorship::on_initialize(1);
 
@@ -301,7 +301,7 @@ fn session_management_works() {
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2]);
 
 		// add a new collator
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3), 3));
 
 		// session won't see this.
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2]);
@@ -328,8 +328,8 @@ fn session_management_works() {
 fn kick_mechanism() {
 	new_test_ext().execute_with(|| {
 		// add a new collator
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3), 3));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4), 4));
 		initialize_to_block(10);
 		assert_eq!(CollatorSelection::candidates().len(), 2);
 		initialize_to_block(20);
@@ -353,8 +353,8 @@ fn kick_mechanism() {
 fn should_not_kick_mechanism_too_few() {
 	new_test_ext().execute_with(|| {
 		// add a new collator
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3), 3));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5), 5));
 		initialize_to_block(10);
 		assert_eq!(CollatorSelection::candidates().len(), 2);
 		initialize_to_block(20);
