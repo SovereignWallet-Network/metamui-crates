@@ -351,7 +351,7 @@ pub mod pallet {
 		///
 		/// This call is not available to `Invulnerable` collators.
 		#[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]
-		pub fn register_as_candidate(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResultWithPostInfo {
+		pub fn register_candidate(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResultWithPostInfo {
 			T::RegisterOrigin::ensure_origin(origin)?;
 
 			// ensure we are below limit.

@@ -1409,6 +1409,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
+name = "pallet-aura"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#1cca061ede75a4c693a3b71bd1b61d7275fe29e4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-application-crypto",
+ "sp-consensus-aura",
+ "sp-runtime",
+ "sp-std 4.0.0",
+]
+
+[[package]]
+name = "pallet-authorship"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#1cca061ede75a4c693a3b71bd1b61d7275fe29e4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-authorship",
+ "sp-runtime",
+ "sp-std 4.0.0",
+]
+
+[[package]]
 name = "pallet-balances"
 version = "0.0.1"
 dependencies = [
@@ -1427,6 +1458,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-balances"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#1cca061ede75a4c693a3b71bd1b61d7275fe29e4"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-std 4.0.0",
+]
+
+[[package]]
 name = "pallet-check-access"
 version = "1.0.0"
 dependencies = [
@@ -1440,6 +1486,32 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std 3.0.0",
+]
+
+[[package]]
+name = "pallet-collator-selection"
+version = "3.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-aura",
+ "pallet-authorship",
+ "pallet-balances 4.0.0-dev",
+ "pallet-session",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std 4.0.0",
+ "sp-tracing",
 ]
 
 [[package]]
@@ -1561,7 +1633,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "metamui-primitives",
- "pallet-balances",
+ "pallet-balances 0.0.1",
  "pallet-did",
  "pallet-vc",
  "parity-scale-codec",
@@ -2371,6 +2443,55 @@ dependencies = [
  "sp-application-crypto",
  "sp-runtime",
  "sp-std 4.0.0",
+]
+
+[[package]]
+name = "sp-authorship"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#1cca061ede75a4c693a3b71bd1b61d7275fe29e4"
+dependencies = [
+ "async-trait",
+ "parity-scale-codec",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-std 4.0.0",
+]
+
+[[package]]
+name = "sp-consensus"
+version = "0.10.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#1cca061ede75a4c693a3b71bd1b61d7275fe29e4"
+dependencies = [
+ "async-trait",
+ "futures",
+ "futures-timer",
+ "log",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-state-machine",
+ "sp-std 4.0.0",
+ "sp-version",
+ "thiserror",
+]
+
+[[package]]
+name = "sp-consensus-aura"
+version = "0.10.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.26#1cca061ede75a4c693a3b71bd1b61d7275fe29e4"
+dependencies = [
+ "async-trait",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-consensus",
+ "sp-consensus-slots",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-std 4.0.0",
+ "sp-timestamp",
 ]
 
 [[package]]
