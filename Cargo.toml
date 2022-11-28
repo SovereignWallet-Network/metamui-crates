@@ -3,15 +3,16 @@ members = [
     "validator-collective",
     "metamui-primitives",
     "node-authorization",
+    "collator-selection",
     "node-authorities",
     "validator-set",
-    "collective",
-    "balances",
-    "did",
     "check-access",
+    "collective",
+    "cache-did",
+    "balances",
     "token",
-    "vc",
-    "collator-selection"
+    "did",
+    "vc"
 ]
 [profile.release]
 panic = "unwind"
