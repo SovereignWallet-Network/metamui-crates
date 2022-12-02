@@ -15,7 +15,7 @@ use sp_std::convert::TryInto;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type BlockNumber = u32;
-use metamui_primitives::types::VC as VCStruct;
+use metamui_primitives::types::{ TokenVC, VC as VCStruct};
 
 ord_parameter_types! {
 	pub const ValidAccount: u64 = BOB_ACCOUNT_ID;

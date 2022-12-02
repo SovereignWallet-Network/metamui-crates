@@ -3,7 +3,7 @@ use crate::{
 	mock::{Balances, Token, VC, *},
 };
 use frame_support::{assert_noop, assert_ok};
-use metamui_primitives::types::{SlashMintTokens, VC as VCStruct};
+use metamui_primitives::types::{SlashMintTokens, TokenVC, VC as VCStruct};
 use pallet_vc;
 use sp_core::{sr25519, Pair, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
@@ -12,7 +12,7 @@ use sp_runtime::traits::{BlakeTwo256, Hash};
 fn test_mint_token() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -82,7 +82,7 @@ fn test_mint_token() {
 fn test_mint_token_fails() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -158,7 +158,7 @@ fn test_mint_token_fails() {
 fn test_mint_token_fails_invalidvc() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -227,7 +227,7 @@ fn test_mint_token_fails_invalidvc() {
 fn test_slash_token() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -297,7 +297,7 @@ fn test_slash_token() {
 fn test_slash_token_fails() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -373,7 +373,7 @@ fn test_slash_token_fails() {
 fn test_slash_token_fails_invalidvc() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -442,7 +442,7 @@ fn test_slash_token_fails_invalidvc() {
 fn test_slash_token_fails_lowbalance() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -512,7 +512,7 @@ fn test_withdraw_reserve_works() {
 	new_test_ext().execute_with(|| {
 		let reservable_balance: u128 = 1_000_000;
 		let token_amount: u128 = 5_000_000;
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance,
 			decimal: 6,
@@ -566,7 +566,7 @@ fn test_withdraw_reserve_fails() {
 	new_test_ext().execute_with(|| {
 		let reservable_balance: u128 = 1_000_000;
 		let token_amount: u128 = 5_000_000;
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance,
 			decimal: 6,
@@ -607,7 +607,7 @@ fn test_withdraw_reserve_fails() {
 fn test_transfer_token_works() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -678,7 +678,7 @@ fn test_transfer_token_works() {
 fn test_transfer_token_fails_lowbalance() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
@@ -747,7 +747,7 @@ fn test_transfer_token_fails_lowbalance() {
 fn test_transfer_token_fails_invalidvc() {
 	new_test_ext().execute_with(|| {
 		let currency_code: CurrencyCode = convert_to_array::<8>("OTH".into());
-		let token_vc = pallet_vc::TokenVC {
+		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,

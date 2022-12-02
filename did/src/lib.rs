@@ -135,7 +135,7 @@ pub mod pallet {
 		/// Adds a DID on chain, where
 		/// origin - the origin of the transaction
 		/// vc_id - The id of the VC that is authorized to create this DID
-		/// identifier - public unique identifier for the DID
+		/// para_id - The id of the parachain if a did needs to be created there
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn create_private(
 			origin: OriginFor<T>,
@@ -187,8 +187,7 @@ pub mod pallet {
 		/// Adds a DID on chain, where
 		/// origin - the origin of the transaction
 		/// vc_id - The id of the VC that is authorized to create this DID
-		/// identifier - public unique identifier for the DID
-
+		/// para_id - The id of the parachain if a did needs to be created there
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn create_public(
 			origin: OriginFor<T>,
@@ -242,6 +241,8 @@ pub mod pallet {
 
 		/// Sync did from relay chain to parachain
 		/// origin - the origin of the transaction
+		/// identifier - public unique identifier for the DID
+		/// para_id - The id of the parachain if a did needs to be created there
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn sync_did(
 			origin: OriginFor<T>,
@@ -261,6 +262,8 @@ pub mod pallet {
 
 		/// Removes a DID from chain storage, where
 		/// origin - the origin of the transaction
+		/// identifier - public unique identifier for the DID
+		/// para_id - The id of the parachain if a did needs to be created there
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn remove(
 			origin: OriginFor<T>,
@@ -287,6 +290,8 @@ pub mod pallet {
 
 		/// Updates a DID public key on the chain
 		/// origin - the origin of the transaction
+		/// public_key - public key to be rotated
+		/// para_id - The id of the parachain if a did needs to be created there
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn rotate_key(
 			origin: OriginFor<T>,
@@ -315,6 +320,8 @@ pub mod pallet {
 
 		/// Updates DID metadata on the chain
 		/// origin - the origin of the transaction
+		/// para_id - The id of the parachain if a did needs to be created there
+		/// metadata - addional information 
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn update_metadata(
 			origin: OriginFor<T>,
