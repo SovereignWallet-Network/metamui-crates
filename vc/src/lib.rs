@@ -15,7 +15,7 @@ use sp_runtime::{
 use metamui_primitives::{ 
   Did, VCid, VCHex,
   traits::{ DidResolve, IsMember, MultiAddress, IsValidator },
-  types::{ VCType, VC, SlashMintTokens, TokenTransferVC, PublicDidVC, PrivateDidVC }
+  types::{ VCType, VC, TokenVC, SlashMintTokens, TokenTransferVC, PublicDidVC, PrivateDidVC }
 };
 use sp_std::{ prelude::*, vec };
 use sr25519::Signature;
