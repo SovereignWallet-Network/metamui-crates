@@ -19,7 +19,7 @@ use super::{Event as CollectiveEvent, *};
 use crate as pallet_collective;
 use frame_support::{
 	assert_noop, assert_ok, parameter_types,
-	traits::{ConstU32, ConstU64, GenesisBuild, StorageVersion},
+	traits::{ConstU32, ConstU64, GenesisBuild},
 	weights::Pays,
 	Hashable,
 };
@@ -29,7 +29,6 @@ use sp_core::{sr25519, Pair, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
 };
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
@@ -168,7 +167,6 @@ impl Config for Test {
 
 pub const VALIDATOR_ACCOUNT: u64 = 0;
 pub const VALIDATOR_DID: [u8; 32] = *b"did:ssid:Alice\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-const NON_VALIDATOR_ACCOUNT: u64 = 2;
 pub const VALIDATOR_PUBKEY: sr25519::Public = sr25519::Public([0; 32]);
 const ALICE: metamui_primitives::Did = *b"did:ssid:swn\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 const BOB: metamui_primitives::Did = *b"did:ssid:bob\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
@@ -184,10 +182,6 @@ const BOB_SEED: [u8; 32] = [
 const DAVE_SEED: [u8; 32] = [
 	134, 128, 32, 174, 6, 135, 221, 167, 213, 117, 101, 9, 58, 105, 9, 2, 17, 68, 152, 69, 167,
 	225, 20, 83, 97, 40, 0, 182, 99, 48, 114, 70,
-];
-const EVE_SEED: [u8; 32] = [
-	120, 106, 208, 226, 223, 69, 111, 228, 61, 209, 249, 30, 188, 162, 46, 35, 91, 193, 98, 224,
-	187, 141, 83, 198, 51, 232, 200, 91, 42, 246, 139, 122,
 ];
 const ALICE_SEED: [u8; 32] = [
     229, 190, 154, 80, 146, 184, 27, 202, 100, 190, 129, 210, 18, 231, 242, 249, 235, 161, 131,
@@ -680,7 +674,6 @@ fn removal_of_old_voters_votes_works_with_set_members() {
 #[test]
 fn propose_works() {
 	new_test_ext().execute_with(|| {
-		;
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let hash = proposal.blake2_256().into();
@@ -892,7 +885,6 @@ fn motions_vote_after_works() {
 #[test]
 fn motions_all_first_vote_free_works() {
 	new_test_ext().execute_with(|| {
-		;
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let hash: H256 = proposal.blake2_256().into();

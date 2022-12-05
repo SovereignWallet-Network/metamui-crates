@@ -24,7 +24,8 @@ pub type Metadata = BoundedVec<u8, MaxMetadata>;
 pub type RegistrationNumber = BoundedVec<u8, MaxRegNumLen>;
 /// Company Name Type
 pub type CompanyName = BoundedVec<u8, MaxCompNameLen>;
-
+/// Currency Code
+pub type CurrencyCode = [u8; 8];
 /// Region
 pub type Region = Vec<u8>;
 
@@ -75,6 +76,8 @@ pub struct VC<Hash> {
 pub struct SlashMintTokens {
   /// VCid field
   pub vc_id: VCid,
+  /// Currency Code
+  pub currency_code: CurrencyCode,
   /// Amount field
   pub amount: u128,
 }
@@ -85,6 +88,8 @@ pub struct SlashMintTokens {
 pub struct TokenTransferVC {
   /// VCid field
   pub vc_id: VCid,
+  /// Currency Code
+  pub currency_code: CurrencyCode,
   /// Amount field
   pub amount: u128,
 }
@@ -113,13 +118,18 @@ pub struct PrivateDidVC {
   pub did: Did,
 }
 
+/// VC used to create Tokens
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TokenVC {
-    pub token_name: [u8; 16],
-    pub reservable_balance: u128,
-    pub decimal: u8,
-    pub currency_code: [u8; 8],
+  /// Token Name
+  pub token_name: [u8; 16],
+  /// Reservable Balance
+  pub reservable_balance: u128,
+  /// Decimal
+  pub decimal: u8,
+  /// Currency Code
+  pub currency_code: CurrencyCode,
 }
 
 /// Did Type 

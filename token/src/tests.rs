@@ -4,7 +4,6 @@ use crate::{
 };
 use frame_support::{assert_noop, assert_ok};
 use metamui_primitives::types::{SlashMintTokens, TokenVC, VC as VCStruct};
-use pallet_vc;
 use sp_core::{sr25519, Pair, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 
@@ -46,7 +45,7 @@ fn test_mint_token() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let mint_amount: u128 = 1_000_000;
-		let mint_vc = SlashMintTokens { vc_id, amount: mint_amount };
+		let mint_vc = SlashMintTokens { vc_id, currency_code, amount: mint_amount };
 
 		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
 		let vc_type = VCType::MintTokens;
@@ -116,7 +115,7 @@ fn test_mint_token_fails() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let mint_amount: u128 = 1_000_000;
-		let mint_vc = SlashMintTokens { vc_id, amount: mint_amount };
+		let mint_vc = SlashMintTokens { vc_id, currency_code,  amount: mint_amount };
 
 		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
 		let vc_type = VCType::MintTokens;
@@ -192,7 +191,7 @@ fn test_mint_token_fails_invalidvc() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let mint_amount: u128 = 1_000_000;
-		let mint_vc = SlashMintTokens { vc_id, amount: mint_amount };
+		let mint_vc = SlashMintTokens { vc_id, currency_code,  amount: mint_amount };
 
 		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
 		let vc_type = VCType::SlashTokens;
@@ -261,7 +260,7 @@ fn test_slash_token() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let slash_amount: u128 = 1_000_000;
-		let slash_vc = SlashMintTokens { vc_id, amount: slash_amount };
+		let slash_vc = SlashMintTokens { vc_id, currency_code,  amount: slash_amount };
 
 		let slash_vc: [u8; 128] = convert_to_array::<128>(slash_vc.encode());
 		let vc_type = VCType::SlashTokens;
@@ -331,7 +330,7 @@ fn test_slash_token_fails() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let slash_amount: u128 = 1_000_000;
-		let slash_vc = SlashMintTokens { vc_id, amount: slash_amount };
+		let slash_vc = SlashMintTokens { vc_id, currency_code,  amount: slash_amount };
 
 		let slash_vc: [u8; 128] = convert_to_array::<128>(slash_vc.encode());
 		let vc_type = VCType::SlashTokens;
@@ -407,7 +406,7 @@ fn test_slash_token_fails_invalidvc() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let slash_amount: u128 = 1_000_000;
-		let slash_vc = SlashMintTokens { vc_id, amount: slash_amount };
+		let slash_vc = SlashMintTokens { vc_id, currency_code,  amount: slash_amount };
 
 		let slash_vc: [u8; 128] = convert_to_array::<128>(slash_vc.encode());
 		let vc_type = VCType::MintTokens;
@@ -476,7 +475,7 @@ fn test_slash_token_fails_lowbalance() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let slash_amount: u128 = 3_000_000;
-		let slash_vc = SlashMintTokens { vc_id, amount: slash_amount };
+		let slash_vc = SlashMintTokens { vc_id, currency_code,  amount: slash_amount };
 
 		let slash_vc: [u8; 128] = convert_to_array::<128>(slash_vc.encode());
 		let vc_type = VCType::SlashTokens;
@@ -641,7 +640,7 @@ fn test_transfer_token_works() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let transfer_amount: u128 = 1_000_000;
-		let token_transfer_vc = TokenTransferVC { vc_id, amount: transfer_amount };
+		let token_transfer_vc = TokenTransferVC { vc_id, currency_code,  amount: transfer_amount };
 
 		let token_transfer_vc: [u8; 128] = convert_to_array::<128>(token_transfer_vc.encode());
 		let vc_type = VCType::TokenTransferVC;
@@ -712,7 +711,7 @@ fn test_transfer_token_fails_lowbalance() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let transfer_amount: u128 = 7_000_000;
-		let token_transfer_vc = TokenTransferVC { vc_id, amount: transfer_amount };
+		let token_transfer_vc = TokenTransferVC { vc_id, currency_code,  amount: transfer_amount };
 
 		let token_transfer_vc: [u8; 128] = convert_to_array::<128>(token_transfer_vc.encode());
 		let vc_type = VCType::TokenTransferVC;
@@ -781,7 +780,7 @@ fn test_transfer_token_fails_invalidvc() {
 		let _ = Balances::deposit_creating(&BOB_ACCOUNT_ID, token_amount.try_into().unwrap());
 
 		let transfer_amount: u128 = 1_000_000;
-		let token_transfer_vc = TokenTransferVC { vc_id, amount: transfer_amount };
+		let token_transfer_vc = TokenTransferVC { vc_id, currency_code,  amount: transfer_amount };
 
 		let token_transfer_vc: [u8; 128] = convert_to_array::<128>(token_transfer_vc.encode());
 		let vc_type = VCType::SlashTokens;

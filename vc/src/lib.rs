@@ -157,12 +157,14 @@ pub mod pallet {
 			// Issuer’s Did validity will be checked in the set_approved_issuers() 
 			// Check if owner’s did is registered or not
       ensure!(<T as pallet::Config>::DidResolution::did_exists(MultiAddress::Did(vc.owner)), Error::<T>::DidDoesNotExist);
-      
+
+      // Check currency code is valid
+      Self::validate_currency_code(&vc)?;
+
 			match vc.vc_type {
         VCType::TokenVC => {
           // Check if the origin of the call is approved orgin or not
 					<T as Config>::ApproveOrigin::ensure_origin(origin)?;
-          Self::validate_currency_code(&vc)?;
 				}
 
 				VCType::SlashTokens | VCType::MintTokens | VCType::TokenTransferVC | VCType::PrivateDidVC | VCType::PublicDidVC => {
@@ -359,6 +361,16 @@ impl<T: Config> Pallet<T> {
           Self::decode_vc::<TokenVC>(&vc.vc_property)?;
         currency_code = vc_property.currency_code.into();
       },
+      VCType::SlashTokens | VCType::MintTokens => {
+          let vc_property: SlashMintTokens =
+              Self::decode_vc::<SlashMintTokens>(&vc.vc_property)?;
+          currency_code = vc_property.currency_code.into();
+      }
+      VCType::TokenTransferVC => {
+          let vc_property: TokenTransferVC =
+              Self::decode_vc::<TokenTransferVC>(&vc.vc_property)?;
+          currency_code = vc_property.currency_code.into();
+      }
       
       _ => { return Ok(()); }
     }

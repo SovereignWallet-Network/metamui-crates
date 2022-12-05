@@ -274,11 +274,12 @@ fn test_store() {
 fn test_invalid_owner_vc() {
 	new_test_ext().execute_with(|| {
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
+		let currency_code = convert_to_array::<8>("OTH".into());
 		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
-			currency_code: convert_to_array::<8>("OTH".into()),
+			currency_code,
 		};
 
 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
@@ -312,7 +313,7 @@ fn test_invalid_owner_vc() {
 		let vc_type = VCType::MintTokens;
 		let owner = ALICE;
 		let issuers = vec![BOB];
-		let mint_vc = SlashMintTokens { vc_id, amount: 1000 };
+		let mint_vc = SlashMintTokens { vc_id, currency_code, amount: 1000 };
 		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
 		let hash = BlakeTwo256::hash_of(&(&vc_type, &mint_vc, &owner, &issuers));
 		let signature = pair.sign(hash.as_ref());
@@ -336,12 +337,13 @@ fn test_invalid_owner_vc() {
 #[test]
 fn test_mint_vc_store() {
 	new_test_ext().execute_with(|| {
+		let currency_code = convert_to_array::<8>("OTH".into());
 		let pair: sr25519::Pair = sr25519::Pair::from_seed(&BOB_SEED);
 		let token_vc = TokenVC {
 			token_name: convert_to_array::<16>("test".into()),
 			reservable_balance: 1000,
 			decimal: 6,
-			currency_code: convert_to_array::<8>("OTH".into()),
+			currency_code,
 		};
 
 		let token_vc: [u8; 128] = convert_to_array::<128>(token_vc.encode());
@@ -374,7 +376,7 @@ fn test_mint_vc_store() {
 		let vc_type = VCType::MintTokens;
 		let owner = DAVE;
 		let issuers = vec![BOB];
-		let mint_vc = SlashMintTokens { vc_id, amount: 1000 };
+		let mint_vc = SlashMintTokens { vc_id, currency_code, amount: 1000 };
 		let mint_vc: [u8; 128] = convert_to_array::<128>(mint_vc.encode());
 		let hash = BlakeTwo256::hash_of(&(&vc_type, &mint_vc, &owner, &issuers));
 		let signature = pair.sign(hash.as_ref());

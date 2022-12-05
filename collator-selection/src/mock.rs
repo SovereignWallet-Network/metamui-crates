@@ -222,9 +222,6 @@ impl Config for Test {
 	type RegisterOrigin = EnsureSigned<Self::AccountId>;
 }
 
-pub const ALICE_ACCOUNT_ID: u64 = 2077282123132384724;
-pub const BOB_ACCOUNT_ID: u64 = 7166219960988249998;
-
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	sp_tracing::try_init_simple();
 	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
