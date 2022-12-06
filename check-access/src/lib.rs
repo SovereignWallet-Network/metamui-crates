@@ -18,7 +18,7 @@ use sp_std::fmt::Debug;
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 use scale_info::TypeInfo;
-use metamui_primitives::traits::{ DidResolve, MultiAddress };
+use metamui_primitives::{ Did, traits::{ DidResolve, MultiAddress } };
 pub mod types;
 use crate::types::*;
 pub use pallet::*;
@@ -28,8 +28,7 @@ pub mod pallet {
   use super::*;
   use frame_support::pallet_prelude::*;
   use frame_system::pallet_prelude::*;
-  
-  /// Configure the pallet by specifying the parameters and types on which it depends.
+
   #[pallet::config]
   pub trait Config: frame_system::Config{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -68,7 +67,20 @@ pub mod pallet {
   pub struct Pallet<T>(_);
   
   #[pallet::storage]
-  pub(super) type WhitelistedPallets<T: Config> =  StorageDoubleMap<_, Blake2_128Concat, PalletName, Blake2_128Concat, FunctionName, (), ValueQuery>;
+  pub(super) type WhitelistedPallets<T> =  StorageDoubleMap<_, Blake2_128Concat, PalletName, Blake2_128Concat, FunctionName, (), ValueQuery>;
+
+  #[pallet::storage]
+  pub(super) type BlacklistedDids<T> =  StorageMap<_, Blake2_128Concat, Did, BlacklistReason, ValueQuery>;
+
+  #[pallet::storage]
+  pub(super) type BlacklistingReasons<T> =  StorageMap<_, Blake2_128Concat, ReasonCode, BlacklistReason, ValueQuery>;
+  
+  #[pallet::storage]
+  pub(super) type BlacklistingReasonsRLookup<T> =  StorageMap<_, Blake2_128Concat, BlacklistReason, ReasonCode, ValueQuery>;
+
+  #[pallet::storage]
+  pub(super) type ReasonsCount<T> =  StorageValue<_, NumberOfReasons, ValueQuery>;
+
 
   #[pallet::hooks]
   impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
@@ -76,19 +88,39 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// An Extrinsic has been added to WhiteList
+		/// An Extrinsic has been added to Whitelist
 		ExtrinsicAdded { pallet_name: PalletName, function_name: FunctionName },
-		/// An Extrinsic has been removed from WhiteList
+		/// An Extrinsic has been removed from Whitelist
 		ExtrinsicRemoved { pallet_name: PalletName, function_name: FunctionName },
-	}
+    /// A DID has been added to Blacklist
+		DidBlacklisted { identifier: Did, reason_name: BlacklistReason},
+    /// A DID has been removed from Blacklist
+		DidWhitelisted { identifier: Did },
+    /// A Blacklisting reason has been added
+		ReasonAdded { reason_code: ReasonCode, reason_name: BlacklistReason},
+	  /// A Blacklisting reason has been removed
+    ReasonRemoved { reason_code: ReasonCode },
+  }
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The entered extrinsic already exists on chain
+		/// The entered extrinsic is already added
 		ExtrinsicAlreadyExists,
-		/// The entered extrinsic does not exist on chain
+		/// The entered extrinsic is never added
 		ExtrinsicDoesNotExist,
+    /// The entered did does not exist on chain
+		DidDoesNotExist,
+    /// The entered did is not blacklisted
+		DidIsNotBlacklisted,
+		/// The entered did is already blacklisted
+		DidAlreadyBlacklisted,
+    /// The entered reason_code is invalid
+		InvalidReasonCode,
+    /// The entered reason is already added
+    ReasonAlreadyAdded,
+    /// The entered reason is not added
+		ReasonIsNotAdded,
 	}
 
   #[pallet::call]
@@ -115,13 +147,87 @@ pub mod pallet {
 			Self::deposit_event(Event::ExtrinsicRemoved{ pallet_name, function_name });
       Ok(().into())
 		}
+
+    #[pallet::weight(1)]
+    pub fn add_blacklisted_did(origin: OriginFor<T>, identifier: Did, reason_code: Option<u8>) -> DispatchResultWithPostInfo {
+      T::CallOrigin::ensure_origin(origin)?;
+
+      // ensure did exists on chain
+      ensure!(T::DidResolution::did_exists(MultiAddress::Did(identifier)), Error::<T>::DidDoesNotExist);
+
+			// ensure did is not already blacklisted
+			ensure!(!BlacklistedDids::<T>::contains_key(identifier), Error::<T>::DidAlreadyBlacklisted);
+
+      // fetch reason_name from reason_code
+      let reason_name = match reason_code {
+        Some(reason_code) => {
+          // ensure reason_code is valid
+          ensure!(!BlacklistingReasons::<T>::contains_key(reason_code), Error::<T>::InvalidReasonCode);
+          BlacklistingReasons::<T>::get(reason_code)
+        }
+        None => *b"Other\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+      };
+
+      // blacklist the did with fetched reason_name
+      BlacklistedDids::<T>::insert(identifier, reason_name);
+
+      // deposit event that the did has been blacklisted
+			Self::deposit_event(Event::DidBlacklisted{ identifier, reason_name });
+      Ok(().into())
+    }
+          
+    #[pallet::weight(1)]
+    pub fn remove_blacklisted_did(origin: OriginFor<T>, identifier: Did) -> DispatchResultWithPostInfo {
+      T::CallOrigin::ensure_origin(origin)?;
+
+      // ensure did exists on chain
+      ensure!(T::DidResolution::did_exists(MultiAddress::Did(identifier)), Error::<T>::DidDoesNotExist);
+
+			// ensure did is actually blacklisted
+			ensure!(BlacklistedDids::<T>::contains_key(identifier), Error::<T>::DidIsNotBlacklisted);
+
+      BlacklistedDids::<T>::remove(identifier);
+			Self::deposit_event(Event::DidWhitelisted{ identifier });
+      Ok(().into())
+		}
+
+    #[pallet::weight(1)]
+    pub fn add_blacklisting_reason(origin: OriginFor<T>, reason_name: [u8; 32]) -> DispatchResultWithPostInfo {
+      T::CallOrigin::ensure_origin(origin)?;
+
+			// ensure reason is not already listed
+			ensure!(!BlacklistingReasonsRLookup::<T>::contains_key(reason_name), Error::<T>::ReasonAlreadyAdded);
+
+      // fetch and increment current number_of_reasons
+      let number_of_reasons = ReasonsCount::<T>::get();
+      ReasonsCount::<T>::put(number_of_reasons+1);
+
+      BlacklistingReasons::<T>::insert(number_of_reasons+1, reason_name);
+			Self::deposit_event(Event::ReasonAdded{ reason_code: number_of_reasons+1, reason_name });
+      Ok(().into())
+    }
+          
+    #[pallet::weight(1)]
+    pub fn remove_blacklisting_reason(origin: OriginFor<T>, reason_code: u8) -> DispatchResultWithPostInfo {
+      T::CallOrigin::ensure_origin(origin)?;
+
+      // ensure reason is already listed
+			ensure!(BlacklistingReasons::<T>::contains_key(reason_code), Error::<T>::ReasonIsNotAdded);
+
+      BlacklistingReasons::<T>::remove(reason_code);
+			Self::deposit_event(Event::ReasonRemoved{ reason_code });
+      Ok(().into())
+		}
   }
 }
 
 impl<T: Config> Pallet<T> { 
-  fn check_pallet(pallet_name: PalletName, function_name: FunctionName) -> bool{
-		// let extrinsic = ExtrinsicsStruct { pallet_name, function_name };
+  fn check_pallet(pallet_name: PalletName, function_name: FunctionName) -> bool {
     <WhitelistedPallets<T>>::contains_key(pallet_name, function_name)
+  }
+
+  fn is_did_blacklisted(identifier: Did) -> bool {
+    <BlacklistedDids<T>>::contains_key(identifier)
   }
 
   fn adjust_null_padding(name: &mut Vec<u8>) -> Vec<u8> {
@@ -142,6 +248,10 @@ impl<T: Config> Pallet<T> {
       <WhitelistedPallets<T>>::insert(pallet_name, function_name, ());
     }
   }
+
+  // fn code_to_name(reason_code: u8) -> Option<BlacklistReason> {
+  //   match 
+  // }
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
@@ -195,7 +305,11 @@ where
 		let pallet_name = <Pallet<T>>::convert_to_array(vec_pallet_name);
 		let function_name = <Pallet<T>>::convert_to_array(vec_function_name);
 
-		if <Pallet<T>>::check_pallet(pallet_name, function_name) || <T>::DidResolution::did_exists(MultiAddress::Id(who.clone())) {
+    if <T>::DidResolution::did_exists(MultiAddress::Id(who.clone())) && <Pallet<T>>::is_did_blacklisted(<T>::DidResolution::get_did(who).unwrap()) {
+			Err(InvalidTransaction::Custom(100).into())
+    }
+
+		else if <Pallet<T>>::check_pallet(pallet_name, function_name) ||  <T>::DidResolution::did_exists(MultiAddress::Id(who.clone())) {
 			Ok(ValidTransaction {
 				priority: info.weight as TransactionPriority,
 				longevity: TransactionLongevity::max_value(),
