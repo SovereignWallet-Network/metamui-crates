@@ -42,6 +42,9 @@ pub mod pallet {
   #[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub initial_extrinsics: Vec<InitialExtrinsics>,
+    pub blacklisted_dids: Vec<(Did, BlacklistReason)>,
+    pub blacklisting_reasons: Vec<(ReasonCode, BlacklistReason)>,
+    pub reasons_count: NumberOfReasons,
 		pub phantom: PhantomData<T>,
 	}
 
@@ -50,6 +53,9 @@ pub mod pallet {
 		fn default() -> Self {
 			Self {
 				initial_extrinsics: Default::default(),
+        blacklisted_dids: Default::default(),
+        blacklisting_reasons: Default::default(),
+        reasons_count: Default::default(),
 				phantom: Default::default(),
 			}
 		}
@@ -58,7 +64,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			Pallet::<T>::initialise_extrinsics(&self.initial_extrinsics);
+			Pallet::<T>::initialise_extrinsics(&self.initial_extrinsics, &self.blacklisted_dids, &self.blacklisting_reasons, &self.reasons_count);
 		}
 	}
 
@@ -241,12 +247,28 @@ impl<T: Config> Pallet<T> {
 		(&name[..]).try_into().unwrap_or_default()
 	}
 
-  fn initialise_extrinsics(extrinsics: &Vec<InitialExtrinsics>) {
+  fn initialise_extrinsics(
+    extrinsics: &Vec<InitialExtrinsics>, 
+    blacklisted_dids: &Vec<(Did, BlacklistReason)>, 
+    blacklisting_reasons: &Vec<(ReasonCode, BlacklistReason)>,
+    reasons_count: &NumberOfReasons
+  ) {
     for extrinsic in extrinsics.iter() {
       let pallet_name = extrinsic.pallet_name;
       let function_name = extrinsic.function_name;
       <WhitelistedPallets<T>>::insert(pallet_name, function_name, ());
     }
+
+    for did_and_reason in blacklisted_dids.iter() {
+      <BlacklistedDids<T>>::insert(did_and_reason.0, did_and_reason.1);
+    }
+
+    for code_and_reason in blacklisting_reasons.iter(){
+      <BlacklistingReasons<T>>::insert(code_and_reason.0, code_and_reason.1);
+      <BlacklistingReasonsRLookup<T>>::insert(code_and_reason.1, code_and_reason.0);
+    }
+
+    <ReasonsCount<T>>::put(reasons_count);
   }
 
   // fn code_to_name(reason_code: u8) -> Option<BlacklistReason> {

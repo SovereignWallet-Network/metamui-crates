@@ -17,6 +17,14 @@ pub const FIRST_FUNCTION_NAME: [u8;32] = [1;32];
 pub const SECOND_PALLET_NAME: [u8; 32] = [2; 32];
 pub const SECOND_FUNCTION_NAME: [u8; 32] = [3; 32];
 
+pub const BLACKLISTED_DID_ONE: [u8; 32] = [10; 32];
+pub const BLACKLISTED_DID_TWO: [u8; 32] = [20; 32];
+
+pub const REASON_CODE_ONE: u8 = 1;
+pub const REASON_CODE_TWO: u8 = 2;
+pub const BLACKLISTING_REASON_ONE: [u8; 32] = [5; 32];
+pub const BLACKLISTING_REASON_TWO: [u8; 32] = [6; 32];
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
@@ -74,12 +82,21 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.build_storage::<Test>()
 		.unwrap();
 
-		super::GenesisConfig::<Test> { 
+		super::GenesisConfig::<Test> {
 			initial_extrinsics: vec![InitialExtrinsics {
 					pallet_name: FIRST_PALLET_NAME,
 					function_name: FIRST_FUNCTION_NAME
 				}
 			],
+			blacklisted_dids: vec![
+				(BLACKLISTED_DID_ONE, BLACKLISTING_REASON_ONE),
+				(BLACKLISTED_DID_TWO, BLACKLISTING_REASON_TWO),
+			],
+			blacklisting_reasons: vec![
+				(REASON_CODE_ONE, BLACKLISTING_REASON_ONE),
+				(REASON_CODE_TWO, BLACKLISTING_REASON_TWO),
+			],
+			reasons_count: 2,
 			phantom: Default::default(),
 		}
 			.assimilate_storage(&mut o)
