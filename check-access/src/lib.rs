@@ -44,7 +44,7 @@ pub mod pallet {
 		pub initial_extrinsics: Vec<InitialExtrinsics>,
     pub blacklisted_dids: Vec<(Did, BlacklistReason)>,
     pub blacklisting_reasons: Vec<(ReasonCode, BlacklistReason)>,
-    pub reasons_count: NumberOfReasons,
+    pub reasons_count: CurrentReasonCode,
 		pub phantom: PhantomData<T>,
 	}
 
@@ -85,7 +85,7 @@ pub mod pallet {
   pub(super) type BlacklistingReasonsRLookup<T> =  StorageMap<_, Blake2_128Concat, BlacklistReason, ReasonCode, ValueQuery>;
 
   #[pallet::storage]
-  pub(super) type ReasonsCount<T> =  StorageValue<_, NumberOfReasons, ValueQuery>;
+  pub(super) type ReasonsCounter<T> =  StorageValue<_, CurrentReasonCode, ValueQuery>;
 
 
   #[pallet::hooks]
@@ -168,7 +168,7 @@ pub mod pallet {
       let reason_name = match reason_code {
         Some(reason_code) => {
           // ensure reason_code is valid
-          ensure!(!BlacklistingReasons::<T>::contains_key(reason_code), Error::<T>::InvalidReasonCode);
+          ensure!(BlacklistingReasons::<T>::contains_key(reason_code), Error::<T>::InvalidReasonCode);
           BlacklistingReasons::<T>::get(reason_code)
         }
         None => *b"Other\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -205,10 +205,11 @@ pub mod pallet {
 			ensure!(!BlacklistingReasonsRLookup::<T>::contains_key(reason_name), Error::<T>::ReasonAlreadyAdded);
 
       // fetch and increment current number_of_reasons
-      let number_of_reasons = ReasonsCount::<T>::get();
-      ReasonsCount::<T>::put(number_of_reasons+1);
+      let number_of_reasons = ReasonsCounter::<T>::get();
+      ReasonsCounter::<T>::put(number_of_reasons+1);
 
       BlacklistingReasons::<T>::insert(number_of_reasons+1, reason_name);
+      BlacklistingReasonsRLookup::<T>::insert(reason_name, number_of_reasons+1);
 			Self::deposit_event(Event::ReasonAdded{ reason_code: number_of_reasons+1, reason_name });
       Ok(().into())
     }
@@ -220,7 +221,9 @@ pub mod pallet {
       // ensure reason is already listed
 			ensure!(BlacklistingReasons::<T>::contains_key(reason_code), Error::<T>::ReasonIsNotAdded);
 
+      let reason_name = BlacklistingReasons::<T>::get(reason_code);
       BlacklistingReasons::<T>::remove(reason_code);
+      BlacklistingReasonsRLookup::<T>::remove(reason_name);
 			Self::deposit_event(Event::ReasonRemoved{ reason_code });
       Ok(().into())
 		}
@@ -251,7 +254,7 @@ impl<T: Config> Pallet<T> {
     extrinsics: &Vec<InitialExtrinsics>, 
     blacklisted_dids: &Vec<(Did, BlacklistReason)>, 
     blacklisting_reasons: &Vec<(ReasonCode, BlacklistReason)>,
-    reasons_count: &NumberOfReasons
+    current_reason_code: &CurrentReasonCode
   ) {
     for extrinsic in extrinsics.iter() {
       let pallet_name = extrinsic.pallet_name;
@@ -268,7 +271,7 @@ impl<T: Config> Pallet<T> {
       <BlacklistingReasonsRLookup<T>>::insert(code_and_reason.1, code_and_reason.0);
     }
 
-    <ReasonsCount<T>>::put(reasons_count);
+    <ReasonsCounter<T>>::put(current_reason_code);
   }
 }
 

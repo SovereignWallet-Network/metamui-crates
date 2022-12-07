@@ -11,6 +11,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use system::EnsureRoot;
+use metamui_primitives::types::{ PublicKey };
 
 pub const FIRST_PALLET_NAME: [u8;32] = [0;32];
 pub const FIRST_FUNCTION_NAME: [u8;32] = [1;32];
@@ -67,11 +68,35 @@ impl system::Config for Test {
 	type MaxConsumers = ConstU32<16>;
 }
 
+pub struct DidResolution;
+impl<AccountId> DidResolve<AccountId> for DidResolution {
+  /// return if an accountId is mapped to a DID
+  fn did_exists(_: MultiAddress<AccountId>) -> bool {
+  	true
+  }
+  /// convert accountId to DID
+  fn get_did(_: &AccountId) -> Option<Did> {
+    None
+  }
+  /// convert DID to accountId
+  fn get_account_id(_: &Did) -> Option<AccountId> {
+    None
+  }
+  /// get public_key from accountId
+  fn get_public_key(_: &Did) -> Option<PublicKey> {
+		None
+	}
+	/// Check if did is public
+	fn is_did_public(_did: &Did) -> bool {
+		false
+	}
+}
+
 impl pallet_check_access::Config for Test {
 	/// Because this pallet emits events, it depends on the runtime's definition of an event.
 	type Event = Event;
 	/// Trait to resolve Did
-  type DidResolution = ();
+  type DidResolution = DidResolution;
 	/// Sudo Origin
 	type CallOrigin = EnsureRoot<Self::AccountId>;
 }
@@ -90,13 +115,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			],
 			blacklisted_dids: vec![
 				(BLACKLISTED_DID_ONE, BLACKLISTING_REASON_ONE),
-				(BLACKLISTED_DID_TWO, BLACKLISTING_REASON_TWO),
 			],
 			blacklisting_reasons: vec![
 				(REASON_CODE_ONE, BLACKLISTING_REASON_ONE),
-				(REASON_CODE_TWO, BLACKLISTING_REASON_TWO),
 			],
-			reasons_count: 2,
+			reasons_count: 1,
 			phantom: Default::default(),
 		}
 			.assimilate_storage(&mut o)
