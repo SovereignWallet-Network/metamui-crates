@@ -11,11 +11,20 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use system::EnsureRoot;
+use metamui_primitives::types::{ PublicKey };
 
 pub const FIRST_PALLET_NAME: [u8;32] = [0;32];
 pub const FIRST_FUNCTION_NAME: [u8;32] = [1;32];
 pub const SECOND_PALLET_NAME: [u8; 32] = [2; 32];
 pub const SECOND_FUNCTION_NAME: [u8; 32] = [3; 32];
+
+pub const BLACKLISTED_DID_ONE: [u8; 32] = [10; 32];
+pub const BLACKLISTED_DID_TWO: [u8; 32] = [20; 32];
+
+pub const REASON_CODE_ONE: u8 = 1;
+pub const REASON_CODE_TWO: u8 = 2;
+pub const BLACKLISTING_REASON_ONE: [u8; 32] = [5; 32];
+pub const BLACKLISTING_REASON_TWO: [u8; 32] = [6; 32];
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -59,11 +68,35 @@ impl system::Config for Test {
 	type MaxConsumers = ConstU32<16>;
 }
 
+pub struct DidResolution;
+impl<AccountId> DidResolve<AccountId> for DidResolution {
+  /// return if an accountId is mapped to a DID
+  fn did_exists(_: MultiAddress<AccountId>) -> bool {
+  	true
+  }
+  /// convert accountId to DID
+  fn get_did(_: &AccountId) -> Option<Did> {
+    None
+  }
+  /// convert DID to accountId
+  fn get_account_id(_: &Did) -> Option<AccountId> {
+    None
+  }
+  /// get public_key from accountId
+  fn get_public_key(_: &Did) -> Option<PublicKey> {
+		None
+	}
+	/// Check if did is public
+	fn is_did_public(_did: &Did) -> bool {
+		false
+	}
+}
+
 impl pallet_check_access::Config for Test {
 	/// Because this pallet emits events, it depends on the runtime's definition of an event.
 	type Event = Event;
 	/// Trait to resolve Did
-  type DidResolution = ();
+  type DidResolution = DidResolution;
 	/// Sudo Origin
 	type CallOrigin = EnsureRoot<Self::AccountId>;
 }
@@ -74,12 +107,19 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.build_storage::<Test>()
 		.unwrap();
 
-		super::GenesisConfig::<Test> { 
+		super::GenesisConfig::<Test> {
 			initial_extrinsics: vec![InitialExtrinsics {
 					pallet_name: FIRST_PALLET_NAME,
 					function_name: FIRST_FUNCTION_NAME
 				}
 			],
+			blacklisted_dids: vec![
+				(BLACKLISTED_DID_ONE, BLACKLISTING_REASON_ONE),
+			],
+			blacklisting_reasons: vec![
+				(REASON_CODE_ONE, BLACKLISTING_REASON_ONE),
+			],
+			reasons_count: 1,
 			phantom: Default::default(),
 		}
 			.assimilate_storage(&mut o)
