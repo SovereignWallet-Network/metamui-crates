@@ -270,10 +270,6 @@ impl<T: Config> Pallet<T> {
 
     <ReasonsCount<T>>::put(reasons_count);
   }
-
-  // fn code_to_name(reason_code: u8) -> Option<BlacklistReason> {
-  //   match 
-  // }
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo)]
@@ -320,18 +316,19 @@ where
     _len: usize,
   ) -> Result<ValidTransaction, TransactionValidityError> {
   
-
     let vec_pallet_name = <Pallet<T>>::adjust_null_padding(&mut call.get_call_metadata().pallet_name.as_bytes().to_vec());
     let vec_function_name = <Pallet<T>>::adjust_null_padding(&mut call.get_call_metadata().function_name.as_bytes().to_vec());
 
 		let pallet_name = <Pallet<T>>::convert_to_array(vec_pallet_name);
 		let function_name = <Pallet<T>>::convert_to_array(vec_function_name);
 
-    if <T>::DidResolution::did_exists(MultiAddress::Id(who.clone())) && <Pallet<T>>::is_did_blacklisted(<T>::DidResolution::get_did(who).unwrap()) {
+    let did_exists: bool = <T>::DidResolution::did_exists(MultiAddress::Id(who.clone()));
+
+    if did_exists && <Pallet<T>>::is_did_blacklisted(<T>::DidResolution::get_did(who).unwrap()) {
 			Err(InvalidTransaction::Custom(100).into())
     }
 
-		else if <Pallet<T>>::check_pallet(pallet_name, function_name) ||  <T>::DidResolution::did_exists(MultiAddress::Id(who.clone())) {
+		else if <Pallet<T>>::check_pallet(pallet_name, function_name) || did_exists {
 			Ok(ValidTransaction {
 				priority: info.weight as TransactionPriority,
 				longevity: TransactionLongevity::max_value(),
