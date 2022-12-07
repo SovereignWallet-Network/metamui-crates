@@ -193,6 +193,17 @@ fn test_add_already_existing_blacklisting_reason() {
 }
 
 #[test]
+fn test_add_blacklisting_reason_after_limit() {
+	new_test_ext().execute_with(|| {
+		ReasonsCounter::<Test>::put(255);
+		assert_noop!(CheckAccess::add_blacklisting_reason(
+			Origin::root(),
+			BLACKLISTING_REASON_TWO,
+		), Error::<Test>::MaximumReasonsAdded);
+	})
+}
+
+#[test]
 fn test_remove_blacklisting_reason() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(CheckAccess::remove_blacklisting_reason(

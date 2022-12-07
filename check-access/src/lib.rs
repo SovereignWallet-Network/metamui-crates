@@ -25,7 +25,8 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-  use super::*;
+
+use super::*;
   use frame_support::pallet_prelude::*;
   use frame_system::pallet_prelude::*;
 
@@ -127,6 +128,8 @@ pub mod pallet {
     ReasonAlreadyAdded,
     /// The entered reason is not added
 		ReasonIsNotAdded,
+    /// The maximum custom reasons have been added
+    MaximumReasonsAdded
 	}
 
   #[pallet::call]
@@ -206,6 +209,7 @@ pub mod pallet {
 
       // fetch and increment current number_of_reasons
       let number_of_reasons = ReasonsCounter::<T>::get();
+      ensure!(number_of_reasons < 255, Error::<T>::MaximumReasonsAdded);
       ReasonsCounter::<T>::put(number_of_reasons+1);
 
       BlacklistingReasons::<T>::insert(number_of_reasons+1, reason_name);
