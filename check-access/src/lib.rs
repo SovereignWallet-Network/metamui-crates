@@ -292,7 +292,7 @@ impl<T: Config + Send + Sync> AccessValid<T> {
 impl<T: Config + Send + Sync> Debug for AccessValid<T> {
   #[cfg(feature = "std")]
   fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-    write!(f, "AllowAccount")
+    write!(f, "AccessValid")
   }
   
   #[cfg(not(feature = "std"))]
@@ -309,7 +309,7 @@ where
   type Call = T::Call;
   type AdditionalSigned = ();
   type Pre = ();
-  const IDENTIFIER: &'static str = "AllowAccount";
+  const IDENTIFIER: &'static str = "AccessValid";
 
   fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
 		Ok(())
