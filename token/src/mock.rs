@@ -116,7 +116,7 @@ pub const DAVE: metamui_primitives::Did = *b"did:ssid:dave\0\0\0\0\0\0\0\0\0\0\0
 pub const ALICE_ACCOUNT_ID: u64 = 2077282123132384724;
 pub const BOB_ACCOUNT_ID: u64 = 7166219960988249998;
 pub const DAVE_ACCOUNT_ID: u64 = 13620103657161844528;
-pub const INITIAL_BALANCE: u64 = 0; // 100 million MUI
+pub const INITIAL_BALANCE: u64 = 0;
 pub const BOB_SEED: [u8; 32] = [
 	57, 143, 12, 40, 249, 136, 133, 224, 70, 51, 61, 74, 65, 193, 156, 238, 76, 55, 54, 138, 152,
 	50, 198, 80, 47, 108, 253, 24, 46, 42, 239, 137,

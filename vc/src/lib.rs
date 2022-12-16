@@ -21,6 +21,8 @@ use sp_std::{ prelude::*, vec };
 use sr25519::Signature;
 
 #[cfg(test)]
+mod mock;
+#[cfg(test)]
 mod tests;
 
 mod impls;
