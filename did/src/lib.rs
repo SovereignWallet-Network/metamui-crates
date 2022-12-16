@@ -488,8 +488,19 @@ pub mod pallet {
 				),
 			);
 
-			Lookup::<T>::insert(identifier.clone(), Self::get_accountid_from_pubkey(&public_key));
-			RLookup::<T>::insert(Self::get_accountid_from_pubkey(&public_key), identifier.clone());
+			let account_id = Self::get_accountid_from_pubkey(&public_key);
+
+			Lookup::<T>::insert(identifier.clone(), &account_id);
+			RLookup::<T>::insert(&account_id, identifier.clone());
+
+			// Increment providers
+			if frame_system::Pallet::<T>::inc_consumers_without_limit(&account_id).is_err() {
+				// This will leak a provider reference, however it only happens once (at
+				// genesis) so it's really not a big deal and we assume that the user wants to
+				// do this since it's the only way a non-endowed account can contain a session
+				// key.
+				frame_system::Pallet::<T>::inc_providers(&account_id);
+			}
 
 			Ok(())
 		}
@@ -519,8 +530,19 @@ pub mod pallet {
 				),
 			);
 
-			Lookup::<T>::insert(identifier.clone(), Self::get_accountid_from_pubkey(&public_key));
-			RLookup::<T>::insert(Self::get_accountid_from_pubkey(&public_key), identifier.clone());
+			let account_id = Self::get_accountid_from_pubkey(&public_key);
+
+			Lookup::<T>::insert(identifier.clone(), &account_id);
+			RLookup::<T>::insert(&account_id, identifier.clone());
+
+			// Increment providers
+			if frame_system::Pallet::<T>::inc_consumers_without_limit(&account_id).is_err() {
+				// This will leak a provider reference, however it only happens once (at
+				// genesis) so it's really not a big deal and we assume that the user wants to
+				// do this since it's the only way a non-endowed account can contain a session
+				// key.
+				frame_system::Pallet::<T>::inc_providers(&account_id);
+			}
 
 			Ok(())
 		}
