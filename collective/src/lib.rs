@@ -586,6 +586,8 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			let who_did = T::DidResolution::get_did(&who).unwrap_or_default();
 			let members = Self::members();
+			
+			ensure!(ProposalStatuses::<T, I>::contains_key(proposal), Error::<T, I>::ProposalMissing);
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
 			ensure!(!Self::is_proposal_closed(proposal), Error::<T, I>::ProposalAlreadyClosed);
