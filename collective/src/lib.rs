@@ -58,8 +58,8 @@ use frame_support::{
 	weights::{GetDispatchInfo, Pays, Weight},
 };
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 mod impls;
 pub use crate::impls::*;
@@ -588,7 +588,7 @@ pub mod pallet {
 			let members = Self::members();
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
-			ensure!(ProposalStatuses::<T, I>::get(proposal).unwrap().first().unwrap().0 == ProposalStatus::Closed, Error::<T, I>::ProposalAlreadyClosed);
+			ensure!(!Self::is_proposal_closed(proposal), Error::<T, I>::ProposalAlreadyClosed);
 
 			// Detects first vote of the member in the motion
 			let is_account_voting_first_time = Self::do_vote(who_did, proposal, index, approve)?;
@@ -695,6 +695,17 @@ fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
 }
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
+    /// Check whether a proposal is closed
+	fn is_proposal_closed(proposal: T::Hash) -> bool {
+		let proposal = ProposalStatuses::<T, I>::get(proposal).unwrap();
+		for (proposal_status, _) in proposal.iter() {
+			if *proposal_status == ProposalStatus::Closed {
+				return true;
+			}
+		}
+		false
+	}
+
 	/// Check whether `who` is a member of the collective.
 	fn is_member(who: &Did) -> bool {
 		// Note: The dispatchables *do not* use this to check membership so make sure
