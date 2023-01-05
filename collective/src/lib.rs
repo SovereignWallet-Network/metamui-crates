@@ -81,6 +81,15 @@ pub type ProposalIndex = u32;
 /// vote exactly once, therefore also the number of votes for any given motion.
 pub type MemberCount = u32;
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ProposalStatus{
+	/// Proposal is active, need to complete voting
+	Active,
+	/// Proposal is closed
+	Closed,
+}
+
 /// Default voting strategy when a member is inactive.
 pub trait DefaultVote {
 	/// Get the default voting strategy, given:
@@ -265,6 +274,11 @@ pub mod pallet {
 	#[pallet::getter(fn voting)]
 	pub type Voting<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Identity, T::Hash, Votes<Did, T::BlockNumber>, OptionQuery>;
+
+	/// status of the proposal
+	#[pallet::storage]
+	pub type ProposalStatuses<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Identity, T::Hash, Vec<(ProposalStatus, T::BlockNumber)>, OptionQuery>;
 
 	/// Proposals so far.
 	#[pallet::storage]
@@ -722,6 +736,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				proposals.try_push(proposal_hash).map_err(|_| Error::<T, I>::TooManyProposals)?;
 				Ok(proposals.len())
 			})?;
+		
+		let block_number = frame_system::Pallet::<T>::block_number();
+		
+		// Adding the proposal to proposalstatuses storage
+		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
+			status_vec.push((ProposalStatus::Active, block_number));
+			ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
 
 		let index = Self::proposal_count();
 		<ProposalCount<T, I>>::mutate(|i| *i += 1);
@@ -938,11 +959,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Self::remove_proposal(proposal_hash)
 	}
 
-	// Removes a proposal from the pallet, cleaning up votes and the vector of proposals.
+	// Removes a proposal from the pallet, updating the proposal status storage
+
 	fn remove_proposal(proposal_hash: T::Hash) -> u32 {
-		// remove proposal and vote
-		ProposalOf::<T, I>::remove(&proposal_hash);
-		Voting::<T, I>::remove(&proposal_hash);
+		let block_number = frame_system::Pallet::<T>::block_number();
+		// updating status of the proposal
+		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
+			status_vec.push((ProposalStatus::Closed, block_number));
+			ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
+
 		let num_proposals = Proposals::<T, I>::mutate(|proposals| {
 			proposals.retain(|h| h != &proposal_hash);
 			proposals.len() + 1 // calculate weight based on original length
