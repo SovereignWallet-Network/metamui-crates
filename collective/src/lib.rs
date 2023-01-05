@@ -350,6 +350,8 @@ pub mod pallet {
 		WrongProposalWeight,
 		/// The given length bound for the proposal was too low.
 		WrongProposalLength,
+		/// Proposal Already Closed
+		ProposalAlreadyClosed
 	}
 
 	// Note that councillor operations are assigned to the operational class.
@@ -586,6 +588,8 @@ pub mod pallet {
 			let members = Self::members();
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
+			ensure!(ProposalStatuses::<T, I>::get(proposal).unwrap().first().unwrap().0 == ProposalStatus::Closed, Error::<T, I>::ProposalAlreadyClosed);
+
 			// Detects first vote of the member in the motion
 			let is_account_voting_first_time = Self::do_vote(who_did, proposal, index, approve)?;
 
@@ -738,7 +742,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			})?;
 		
 		let block_number = frame_system::Pallet::<T>::block_number();
-		
+
 		// Adding the proposal to proposalstatuses storage
 		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
 			status_vec.push((ProposalStatus::Active, block_number));
