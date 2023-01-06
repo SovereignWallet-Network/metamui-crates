@@ -58,8 +58,8 @@ use frame_support::{
 	weights::{GetDispatchInfo, Pays, Weight},
 };
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 mod impls;
 pub use crate::impls::*;
@@ -465,7 +465,8 @@ pub mod pallet {
 			let proposal_len = proposal.encoded_size();
 			ensure!(proposal_len <= length_bound as usize, Error::<T, I>::WrongProposalLength);
 
-			let proposal_hash = T::Hashing::hash_of(&proposal);
+			let block_number = frame_system::Pallet::<T>::block_number();
+			let proposal_hash = T::Hashing::hash_of(&(&proposal, &block_number));
 			let result = proposal.dispatch(RawOrigin::Member(who).into());
 			Self::deposit_event(Event::MemberExecuted {
 				proposal_hash,
@@ -537,7 +538,7 @@ pub mod pallet {
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
 			if threshold < 2 {
-				let (proposal_len, result) = Self::do_propose_execute(proposal, length_bound)?;
+				let (proposal_len, result) = Self::do_propose_execute(who_did, proposal, length_bound)?;
 
 				Ok(get_result_weight(result)
 					.map(|w| {
@@ -586,7 +587,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			let who_did = T::DidResolution::get_did(&who).unwrap_or_default();
 			let members = Self::members();
-			
+
 			ensure!(ProposalStatuses::<T, I>::contains_key(proposal), Error::<T, I>::ProposalMissing);
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
@@ -717,14 +718,36 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 	/// Execute immediately when adding a new proposal.
 	pub fn do_propose_execute(
+		who: Did,
 		proposal: Box<<T as Config<I>>::Proposal>,
 		length_bound: MemberCount,
 	) -> Result<(u32, DispatchResultWithPostInfo), DispatchError> {
 		let proposal_len = proposal.encoded_size();
 		ensure!(proposal_len <= length_bound as usize, Error::<T, I>::WrongProposalLength);
 
-		let proposal_hash = T::Hashing::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<T>::block_number();
+		let proposal_hash = T::Hashing::hash_of(&(&proposal, &block_number));
 		ensure!(!<ProposalOf<T, I>>::contains_key(proposal_hash), Error::<T, I>::DuplicateProposal);
+
+		// Adding the proposal to proposalstatuses storage
+		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
+			status_vec.push((ProposalStatus::Active, block_number));
+			ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
+
+		let index = Self::proposal_count();
+		<ProposalCount<T, I>>::mutate(|i| *i += 1);
+		<ProposalOf<T, I>>::insert(proposal_hash, &*proposal);
+		let threshold: MemberCount = 2;
+		let votes = {
+			let end = frame_system::Pallet::<T>::block_number() + T::MotionDuration::get();
+			Votes { index, threshold, ayes: vec![who], nays: vec![], end }
+		};
+		<Voting<T, I>>::insert(proposal_hash, votes);
+
+		// Adding the proposal to proposalstatuses storage
+		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
+			status_vec.push((ProposalStatus::Closed, block_number));
+			ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
 
 		let seats = Self::members().len() as MemberCount;
 		let result = proposal.dispatch(RawOrigin::Members(1, seats).into());
@@ -745,7 +768,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let proposal_len = proposal.encoded_size();
 		ensure!(proposal_len <= length_bound as usize, Error::<T, I>::WrongProposalLength);
 
-		let proposal_hash = T::Hashing::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<T>::block_number();
+		let proposal_hash = T::Hashing::hash_of(&(&proposal, &block_number));
 		ensure!(!<ProposalOf<T, I>>::contains_key(proposal_hash), Error::<T, I>::DuplicateProposal);
 
 		let active_proposals =
@@ -753,13 +777,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				proposals.try_push(proposal_hash).map_err(|_| Error::<T, I>::TooManyProposals)?;
 				Ok(proposals.len())
 			})?;
-		
-		let block_number = frame_system::Pallet::<T>::block_number();
 
 		// Adding the proposal to proposalstatuses storage
 		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
-			status_vec.push((ProposalStatus::Active, block_number));
-			ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
+		status_vec.push((ProposalStatus::Active, block_number));
+		ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
 
 		let index = Self::proposal_count();
 		<ProposalCount<T, I>>::mutate(|i| *i += 1);
@@ -838,6 +860,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		proposal_weight_bound: Weight,
 		length_bound: u32,
 	) -> DispatchResultWithPostInfo {
+		ensure!(ProposalStatuses::<T, I>::contains_key(proposal_hash), Error::<T, I>::ProposalMissing);
+		ensure!(!Self::is_proposal_closed(proposal_hash), Error::<T, I>::ProposalAlreadyClosed);
 		let voting = Self::voting(&proposal_hash).ok_or(Error::<T, I>::ProposalMissing)?;
 		ensure!(voting.index == index, Error::<T, I>::WrongIndex);
 
