@@ -21,7 +21,6 @@ use frame_support::{
 	assert_noop, assert_ok, parameter_types,
 	traits::{ConstU32, ConstU64, GenesisBuild},
 	weights::Pays,
-	Hashable,
 };
 use pallet_did::types::{DIdentity, PrivateDid};
 use frame_system::{EventRecord, Phase, EnsureSigned};
