@@ -738,7 +738,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let index = Self::proposal_count();
 		<ProposalCount<T, I>>::mutate(|i| *i += 1);
 		<ProposalOf<T, I>>::insert(proposal_hash, &*proposal);
-		let threshold: MemberCount = 2;
+		let threshold: MemberCount = 1;
 		let votes = {
 			let end = frame_system::Pallet::<T>::block_number() + T::MotionDuration::get();
 			Votes { index, threshold, ayes: vec![who], nays: vec![], end }
