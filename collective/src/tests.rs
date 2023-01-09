@@ -265,6 +265,8 @@ fn close_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 
@@ -308,7 +310,7 @@ fn close_works() {
 				record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash })),
 			]
 		);
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -324,6 +326,7 @@ fn proposal_weight_limit_works_on_approve() {
 		let proposal_weight = proposal.get_dispatch_info().weight;
 		let block_number = frame_system::Pallet::<Test>::block_number();
 		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
+		
 		// Set 1 as prime voter
 		Prime::<Test, Instance1>::set(Some(BOB));
 		assert_ok!(Collective::propose(
@@ -332,7 +335,8 @@ fn proposal_weight_limit_works_on_approve() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		// With 1's prime vote, this should pass
 		System::set_block_number(4);
@@ -341,7 +345,7 @@ fn proposal_weight_limit_works_on_approve() {
 			Error::<Test, Instance1>::WrongProposalWeight
 		);
 		assert_ok!(Collective::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len));
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
@@ -365,6 +369,7 @@ fn proposal_weight_limit_ignored_on_disapprove() {
 			proposal_len
 		));
 		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		// No votes, this proposal wont pass
 		System::set_block_number(4);
 		assert_ok!(Collective::close(
@@ -374,7 +379,7 @@ fn proposal_weight_limit_ignored_on_disapprove() {
 			proposal_weight - 100,
 			proposal_len
 		));
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
@@ -400,7 +405,7 @@ fn close_with_prime_works() {
 			proposal_len
 		));
 
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 
@@ -438,7 +443,7 @@ fn close_with_prime_works() {
 				record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash }))
 			]
 		);
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -463,6 +468,7 @@ fn close_with_voting_prime_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 
@@ -504,7 +510,7 @@ fn close_with_voting_prime_works() {
 				}))
 			]
 		);
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -529,6 +535,8 @@ fn close_with_no_prime_but_majority_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(CollectiveMajority::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(CollectiveMajority::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(CollectiveMajority::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(CollectiveMajority::vote(Origin::signed(ALICE_ACCOUNT_ID), hash, 0, true));
@@ -586,6 +594,7 @@ fn close_with_no_prime_but_majority_works() {
 				}))
 			]
 		);
+		assert_eq!(CollectiveMajority::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -603,7 +612,8 @@ fn removal_of_old_voters_votes_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_eq!(
@@ -626,7 +636,8 @@ fn removal_of_old_voters_votes_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 1, true));
 		assert_ok!(Collective::vote(Origin::signed(ALICE_ACCOUNT_ID), hash, 1, false));
 		assert_eq!(
@@ -655,7 +666,7 @@ fn removal_of_old_voters_votes_works_with_set_members() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_eq!(
@@ -678,7 +689,7 @@ fn removal_of_old_voters_votes_works_with_set_members() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 1, true));
 		assert_ok!(Collective::vote(Origin::signed(ALICE_ACCOUNT_ID), hash, 1, false));
 		assert_eq!(
@@ -707,7 +718,8 @@ fn propose_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_eq!(*Collective::proposals(), vec![hash]);
 		assert_eq!(Collective::proposal_of(&hash), Some(proposal));
 		assert_eq!(
@@ -815,7 +827,8 @@ fn motions_ignoring_non_collective_votes_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_noop!(
 			Collective::vote(Origin::signed(42), hash, 0, true),
 			Error::<Test, Instance1>::NotMember,
@@ -837,7 +850,8 @@ fn motions_ignoring_bad_index_collective_vote_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_noop!(
 			Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 1, true),
 			Error::<Test, Instance1>::WrongIndex,
@@ -859,7 +873,7 @@ fn motions_vote_after_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		// Initially there a no votes when the motion is proposed.
 		assert_eq!(
 			Collective::voting(&hash),
@@ -930,7 +944,8 @@ fn motions_all_first_vote_free_works() {
 			Box::new(proposal.clone()),
 			proposal_len,
 		));
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_eq!(
 			Collective::voting(&hash),
 			Some(Votes { index: 0, threshold: 2, ayes: vec![], nays: vec![], end })
@@ -973,7 +988,7 @@ fn motions_all_first_vote_free_works() {
 		let close_rval: DispatchResultWithPostInfo =
 			Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len);
 		assert_eq!(close_rval.unwrap_err().post_info.pays_fee, Pays::Yes);
-
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 		
 	});
 }
@@ -993,18 +1008,21 @@ fn motions_reproposing_disapproved_works() {
 			proposal_len
 		));
 		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, false));
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 		assert_eq!(*Collective::proposals(), vec![]);
 		System::set_block_number(4);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			2,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
-		let block_number = frame_system::Pallet::<Test>::block_number();
-		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_eq!(*Collective::proposals(), vec![hash]);
 	});
 }
@@ -1029,6 +1047,7 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 			proposal_len
 		));
 		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len));
@@ -1067,7 +1086,7 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 				})),
 			]
 		);
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 
 		System::reset_events();
 
@@ -1082,6 +1101,7 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 			proposal_len
 		));
 		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 1, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 1, true));
 		assert_ok!(Collective::vote(Origin::signed(ALICE_ACCOUNT_ID), hash, 1, true));
@@ -1129,7 +1149,7 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 				})),
 			]
 		);
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -1147,6 +1167,8 @@ fn motions_disapproval_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, false));
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len));
@@ -1182,6 +1204,7 @@ fn motions_disapproval_works() {
 				record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash })),
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -1199,6 +1222,8 @@ fn motions_approval_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len));
@@ -1238,6 +1263,7 @@ fn motions_approval_works() {
 				})),
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -1256,6 +1282,7 @@ fn motion_with_no_votes_closes_with_disapproval() {
 			proposal_len
 		));
 		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_eq!(
 			System::events()[0],
 			record(Event::Collective(CollectiveEvent::Proposed {
@@ -1292,7 +1319,8 @@ fn motion_with_no_votes_closes_with_disapproval() {
 			System::events()[2],
 			record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash }))
 		);
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
@@ -1313,6 +1341,7 @@ fn close_disapprove_does_not_care_about_weight_or_len() {
 			proposal_len
 		));
 		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		// First we make the proposal succeed
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
@@ -1330,7 +1359,8 @@ fn close_disapprove_does_not_care_about_weight_or_len() {
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, false));
 		// It can close even if the weight/len information is bad
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, 0, 0));
-		
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
@@ -1348,6 +1378,7 @@ fn disapprove_proposal_works() {
 			proposal_len
 		));
 		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		// Proposal would normally succeed
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
@@ -1379,7 +1410,7 @@ fn disapprove_proposal_works() {
 				record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash })),
 			]
 		);
-		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 

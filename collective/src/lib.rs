@@ -277,7 +277,8 @@ pub mod pallet {
 
 	/// status of the proposal
 	#[pallet::storage]
-	pub type ProposalStatuses<T: Config<I>, I: 'static = ()> =
+	#[pallet::getter(fn proposal_status_of)]
+	pub type ProposalStatusOf<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Identity, T::Hash, Vec<(ProposalStatus, T::BlockNumber)>, OptionQuery>;
 
 	/// Proposals so far.
@@ -588,7 +589,7 @@ pub mod pallet {
 			let who_did = T::DidResolution::get_did(&who).unwrap_or_default();
 			let members = Self::members();
 
-			ensure!(ProposalStatuses::<T, I>::contains_key(proposal), Error::<T, I>::ProposalMissing);
+			ensure!(ProposalStatusOf::<T, I>::contains_key(proposal), Error::<T, I>::ProposalMissing);
 			ensure!(members.contains(&who_did), Error::<T, I>::NotMember);
 
 			ensure!(!Self::is_proposal_closed(proposal), Error::<T, I>::ProposalAlreadyClosed);
@@ -700,7 +701,7 @@ fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
     /// Check whether a proposal is closed
 	fn is_proposal_closed(proposal: T::Hash) -> bool {
-		let proposal = ProposalStatuses::<T, I>::get(proposal).unwrap();
+		let proposal = ProposalStatusOf::<T, I>::get(proposal).unwrap();
 		for (proposal_status, _) in proposal.iter() {
 			if *proposal_status == ProposalStatus::Closed {
 				return true;
@@ -729,10 +730,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let proposal_hash = T::Hashing::hash_of(&(&proposal, &block_number));
 		ensure!(!<ProposalOf<T, I>>::contains_key(proposal_hash), Error::<T, I>::DuplicateProposal);
 
-		// Adding the proposal to proposalstatuses storage
-		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
+		// Adding the proposal to ProposalStatusOf storage
+		let mut status_vec = ProposalStatusOf::<T, I>::get(proposal_hash).unwrap_or_default();
 			status_vec.push((ProposalStatus::Active, block_number));
-			ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
+			ProposalStatusOf::<T, I>::insert(proposal_hash, status_vec);
 
 		let index = Self::proposal_count();
 		<ProposalCount<T, I>>::mutate(|i| *i += 1);
@@ -744,10 +745,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		};
 		<Voting<T, I>>::insert(proposal_hash, votes);
 
-		// Adding the proposal to proposalstatuses storage
-		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
+		// Adding the proposal to ProposalStatusOf storage
+		let mut status_vec = ProposalStatusOf::<T, I>::get(proposal_hash).unwrap_or_default();
 			status_vec.push((ProposalStatus::Closed, block_number));
-			ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
+			ProposalStatusOf::<T, I>::insert(proposal_hash, status_vec);
 
 		let seats = Self::members().len() as MemberCount;
 		let result = proposal.dispatch(RawOrigin::Members(1, seats).into());
@@ -778,10 +779,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				Ok(proposals.len())
 			})?;
 
-		// Adding the proposal to proposalstatuses storage
-		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
+		// Adding the proposal to ProposalStatusOf storage
+		let mut status_vec = ProposalStatusOf::<T, I>::get(proposal_hash).unwrap_or_default();
 		status_vec.push((ProposalStatus::Active, block_number));
-		ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
+		ProposalStatusOf::<T, I>::insert(proposal_hash, status_vec);
 
 		let index = Self::proposal_count();
 		<ProposalCount<T, I>>::mutate(|i| *i += 1);
@@ -860,7 +861,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		proposal_weight_bound: Weight,
 		length_bound: u32,
 	) -> DispatchResultWithPostInfo {
-		ensure!(ProposalStatuses::<T, I>::contains_key(proposal_hash), Error::<T, I>::ProposalMissing);
+		ensure!(ProposalStatusOf::<T, I>::contains_key(proposal_hash), Error::<T, I>::ProposalMissing);
 		ensure!(!Self::is_proposal_closed(proposal_hash), Error::<T, I>::ProposalAlreadyClosed);
 		let voting = Self::voting(&proposal_hash).ok_or(Error::<T, I>::ProposalMissing)?;
 		ensure!(voting.index == index, Error::<T, I>::WrongIndex);
@@ -1005,9 +1006,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	fn remove_proposal(proposal_hash: T::Hash) -> u32 {
 		let block_number = frame_system::Pallet::<T>::block_number();
 		// updating status of the proposal
-		let mut status_vec = ProposalStatuses::<T, I>::get(proposal_hash).unwrap_or_default();
+		let mut status_vec = ProposalStatusOf::<T, I>::get(proposal_hash).unwrap_or_default();
 			status_vec.push((ProposalStatus::Closed, block_number));
-			ProposalStatuses::<T, I>::insert(proposal_hash, status_vec);
+			ProposalStatusOf::<T, I>::insert(proposal_hash, status_vec);
 
 		let num_proposals = Proposals::<T, I>::mutate(|proposals| {
 			proposals.retain(|h| h != &proposal_hash);
