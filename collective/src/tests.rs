@@ -21,7 +21,6 @@ use frame_support::{
 	assert_noop, assert_ok, parameter_types,
 	traits::{ConstU32, ConstU64, GenesisBuild},
 	weights::Pays,
-	Hashable,
 };
 use pallet_did::types::{DIdentity, PrivateDid};
 use frame_system::{EventRecord, Phase, EnsureSigned};
@@ -257,7 +256,8 @@ fn close_works() {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
@@ -265,6 +265,8 @@ fn close_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 
@@ -308,6 +310,7 @@ fn close_works() {
 				record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash })),
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -321,7 +324,9 @@ fn proposal_weight_limit_works_on_approve() {
 		});
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
+		
 		// Set 1 as prime voter
 		Prime::<Test, Instance1>::set(Some(BOB));
 		assert_ok!(Collective::propose(
@@ -330,6 +335,8 @@ fn proposal_weight_limit_works_on_approve() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		// With 1's prime vote, this should pass
 		System::set_block_number(4);
@@ -338,6 +345,7 @@ fn proposal_weight_limit_works_on_approve() {
 			Error::<Test, Instance1>::WrongProposalWeight
 		);
 		assert_ok!(Collective::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
@@ -351,7 +359,8 @@ fn proposal_weight_limit_ignored_on_disapprove() {
 		});
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
@@ -359,6 +368,8 @@ fn proposal_weight_limit_ignored_on_disapprove() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		// No votes, this proposal wont pass
 		System::set_block_number(4);
 		assert_ok!(Collective::close(
@@ -368,6 +379,7 @@ fn proposal_weight_limit_ignored_on_disapprove() {
 			proposal_weight - 100,
 			proposal_len
 		));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
@@ -377,7 +389,8 @@ fn close_with_prime_works() {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::set_members(
 			Origin::root(),
 			vec![BOB, DAVE, EVE],
@@ -391,6 +404,8 @@ fn close_with_prime_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 
@@ -428,6 +443,7 @@ fn close_with_prime_works() {
 				record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash }))
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -437,7 +453,8 @@ fn close_with_voting_prime_works() {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::set_members(
 			Origin::root(),
 			vec![BOB, DAVE, EVE],
@@ -450,7 +467,8 @@ fn close_with_voting_prime_works() {
 			3,
 			Box::new(proposal.clone()),
 			proposal_len
-		));
+		));		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 
@@ -492,6 +510,7 @@ fn close_with_voting_prime_works() {
 				}))
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -501,20 +520,23 @@ fn close_with_no_prime_but_majority_works() {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(CollectiveMajority::set_members(
 			Origin::root(),
 			vec![BOB, DAVE, EVE, ALICE, VALIDATOR_DID],
 			Some(VALIDATOR_DID),
 			MaxMembers::get()
 		));
-
+		
 		assert_ok!(CollectiveMajority::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			5,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(CollectiveMajority::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(CollectiveMajority::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(CollectiveMajority::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(CollectiveMajority::vote(Origin::signed(ALICE_ACCOUNT_ID), hash, 0, true));
@@ -572,6 +594,7 @@ fn close_with_no_prime_but_majority_works() {
 				}))
 			]
 		);
+		assert_eq!(CollectiveMajority::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -580,7 +603,8 @@ fn removal_of_old_voters_votes_works() {
 	new_test_ext().execute_with(|| {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		let end = 4;
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
@@ -588,6 +612,8 @@ fn removal_of_old_voters_votes_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_eq!(
@@ -599,16 +625,19 @@ fn removal_of_old_voters_votes_works() {
 			Collective::voting(&hash),
 			Some(Votes { index: 0, threshold: 3, ayes: vec![DAVE], nays: vec![], end })
 		);
-
+		
 		let proposal = make_proposal(69);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(DAVE_ACCOUNT_ID),
 			2,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 1, true));
 		assert_ok!(Collective::vote(Origin::signed(ALICE_ACCOUNT_ID), hash, 1, false));
 		assert_eq!(
@@ -628,7 +657,8 @@ fn removal_of_old_voters_votes_works_with_set_members() {
 	new_test_ext().execute_with(|| {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		let end = 4;
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
@@ -636,6 +666,7 @@ fn removal_of_old_voters_votes_works_with_set_members() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_eq!(
@@ -650,13 +681,15 @@ fn removal_of_old_voters_votes_works_with_set_members() {
 
 		let proposal = make_proposal(69);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash = BlakeTwo256::hash_of(&proposal);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(DAVE_ACCOUNT_ID),
 			2,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 1, true));
 		assert_ok!(Collective::vote(Origin::signed(ALICE_ACCOUNT_ID), hash, 1, false));
 		assert_eq!(
@@ -676,7 +709,8 @@ fn propose_works() {
 	new_test_ext().execute_with(|| {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		let end = 4;
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
@@ -684,6 +718,8 @@ fn propose_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_eq!(*Collective::proposals(), vec![hash]);
 		assert_eq!(Collective::proposal_of(&hash), Some(proposal));
 		assert_eq!(
@@ -733,10 +769,14 @@ fn correct_validate_and_get_proposal() {
 			prime: None,
 			old_count: MaxMembers::get(),
 		});
+
 		let length = proposal.encode().len() as u32;
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(Origin::signed(BOB_ACCOUNT_ID), 3, Box::new(proposal.clone()), length));
 
-		let hash = BlakeTwo256::hash_of(&proposal);
+		
+		
 		let weight = proposal.get_dispatch_info().weight;
 		assert_noop!(
 			Collective::validate_and_get_proposal(
@@ -779,13 +819,16 @@ fn motions_ignoring_non_collective_votes_works() {
 	new_test_ext().execute_with(|| {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			3,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_noop!(
 			Collective::vote(Origin::signed(42), hash, 0, true),
 			Error::<Test, Instance1>::NotMember,
@@ -799,13 +842,16 @@ fn motions_ignoring_bad_index_collective_vote_works() {
 		System::set_block_number(3);
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			3,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_noop!(
 			Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 1, true),
 			Error::<Test, Instance1>::WrongIndex,
@@ -818,7 +864,8 @@ fn motions_vote_after_works() {
 	new_test_ext().execute_with(|| {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		let end = 4;
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
@@ -826,6 +873,7 @@ fn motions_vote_after_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		// Initially there a no votes when the motion is proposed.
 		assert_eq!(
 			Collective::voting(&hash),
@@ -887,7 +935,8 @@ fn motions_all_first_vote_free_works() {
 	new_test_ext().execute_with(|| {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		let end = 4;
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
@@ -895,6 +944,8 @@ fn motions_all_first_vote_free_works() {
 			Box::new(proposal.clone()),
 			proposal_len,
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_eq!(
 			Collective::voting(&hash),
 			Some(Votes { index: 0, threshold: 2, ayes: vec![], nays: vec![], end })
@@ -933,10 +984,12 @@ fn motions_all_first_vote_free_works() {
 		assert_eq!(close_rval.unwrap().pays_fee, Pays::No);
 
 		// trying to close the proposal, which is already closed.
-		// Expecting error "ProposalMissing" with Pays::Yes
+		// Expecting error "ProposalAlreadyClosed" with Pays::Yes
 		let close_rval: DispatchResultWithPostInfo =
 			Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len);
 		assert_eq!(close_rval.unwrap_err().post_info.pays_fee, Pays::Yes);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
+		
 	});
 }
 
@@ -946,22 +999,30 @@ fn motions_reproposing_disapproved_works() {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			3,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, false));
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 		assert_eq!(*Collective::proposals(), vec![]);
+		System::set_block_number(4);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			2,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_eq!(*Collective::proposals(), vec![hash]);
 	});
 }
@@ -972,7 +1033,8 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 		let proposal = Call::Democracy(mock_democracy::Call::external_propose_majority {});
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		// The voting threshold is 2, but the required votes for `ExternalMajorityOrigin` is 3.
 		// The proposal will be executed regardless of the voting threshold
 		// as long as we have enough yes votes.
@@ -984,6 +1046,8 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len));
@@ -1022,9 +1086,13 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 				})),
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 
 		System::reset_events();
 
+		System::set_block_number(4);
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		// Executed with 3 yes votes.
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
@@ -1032,6 +1100,8 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 1, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 1, true));
 		assert_ok!(Collective::vote(Origin::signed(ALICE_ACCOUNT_ID), hash, 1, true));
@@ -1079,6 +1149,7 @@ fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 				})),
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -1088,13 +1159,16 @@ fn motions_disapproval_works() {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			3,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, false));
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len));
@@ -1130,6 +1204,7 @@ fn motions_disapproval_works() {
 				record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash })),
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -1139,13 +1214,16 @@ fn motions_approval_works() {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			2,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, proposal_weight, proposal_len));
@@ -1185,6 +1263,7 @@ fn motions_approval_works() {
 				})),
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	});
 }
 
@@ -1194,13 +1273,16 @@ fn motion_with_no_votes_closes_with_disapproval() {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
 		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			3,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		assert_eq!(
 			System::events()[0],
 			record(Event::Collective(CollectiveEvent::Proposed {
@@ -1237,6 +1319,8 @@ fn motion_with_no_votes_closes_with_disapproval() {
 			System::events()[2],
 			record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash }))
 		);
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
@@ -1248,13 +1332,16 @@ fn close_disapprove_does_not_care_about_weight_or_len() {
 	new_test_ext().execute_with(|| {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));		
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			2,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		// First we make the proposal succeed
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
@@ -1272,6 +1359,8 @@ fn close_disapprove_does_not_care_about_weight_or_len() {
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, false));
 		// It can close even if the weight/len information is bad
 		assert_ok!(Collective::close(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, 0, 0));
+
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
@@ -1280,13 +1369,16 @@ fn disapprove_proposal_works() {
 	new_test_ext().execute_with(|| {
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash: H256 = proposal.blake2_256().into();
+		let block_number = frame_system::Pallet::<Test>::block_number();
+		let hash = BlakeTwo256::hash_of(&(&proposal, &block_number));
 		assert_ok!(Collective::propose(
 			Origin::signed(BOB_ACCOUNT_ID),
 			2,
 			Box::new(proposal.clone()),
 			proposal_len
 		));
+		
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Active);
 		// Proposal would normally succeed
 		assert_ok!(Collective::vote(Origin::signed(BOB_ACCOUNT_ID), hash, 0, true));
 		assert_ok!(Collective::vote(Origin::signed(DAVE_ACCOUNT_ID), hash, 0, true));
@@ -1318,6 +1410,7 @@ fn disapprove_proposal_works() {
 				record(Event::Collective(CollectiveEvent::Disapproved { proposal_hash: hash })),
 			]
 		);
+		assert_eq!(Collective::proposal_status_of(hash).unwrap().last().unwrap().0, ProposalStatus::Closed);
 	})
 }
 
